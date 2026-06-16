@@ -1,3 +1,7 @@
+---
+alwaysApply: false
+description: 编写/app下的文件（即移动端应用时）使用
+---
 # AiApp — AI 伴学与职业成长平台（HarmonyOS 客户端）
 
 ## 一、项目概述
