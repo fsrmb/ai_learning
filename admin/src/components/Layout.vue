@@ -37,6 +37,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { House, User } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -59,9 +60,23 @@ const handleMenuClick = (path) => {
   router.push(path)
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('token')
-  router.push('/login')
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要退出登录吗？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    localStorage.removeItem('token')
+    ElMessage.success('退出成功')
+    router.push('/login')
+  } catch (error) {
+    ElMessage.info('已取消退出')
+  }
 }
 </script>
 
