@@ -71,7 +71,6 @@ app/
 │           └── pages/               # 页面（@Entry @Component）
 │               ├── Login.ets        # 登录页
 │               ├── Register.ets     # 注册页
-│               ├── MainTab.ets      # 主 Tab 容器
 │               ├── Home.ets         # 首页（快捷入口 + 热门技能）
 │               ├── SkillTree.ets    # 技能树页面
 │               ├── AiChat.ets       # AI 聊天页面

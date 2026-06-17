@@ -1,6 +1,8 @@
-import { PromptAction, router } from '@kit.ArkUI'
+import { router } from '@kit.ArkUI'
 import { UserViewModel } from '../viewmodel/UserViewModel'
 import { TokenUtil } from '../common/TokenUtil'
+import { IconInput } from '../components/IconInput'
+import { ErrorTip } from '../components/ErrorTip'
 
 @Entry
 @Component
@@ -9,7 +11,6 @@ struct Login {
   @State password: string = ''
   @State loading: boolean = false
   @State errorMessage: string = ''
-  @State showPassword: boolean = false
   @State rememberMe: boolean = false
 
   private userViewModel: UserViewModel = new UserViewModel()
@@ -79,71 +80,30 @@ struct Login {
           .alignItems(HorizontalAlign.Start)
           .margin({ bottom: 24 })
 
-          Column() {
-            Row() {
-              Text('👤')
-                .fontSize(18)
-                .margin({ right: 12 })
-
-              TextInput({ placeholder: '请输入用户名', text: this.username })
-                .width('100%')
-                .height(44)
-                .fontSize(16)
-                .fontColor('#1a1a2e')
-                .placeholderColor('#c0c4cc')
-                .backgroundColor('#f5f7fa')
-                .borderRadius(12)
-                .padding({ left: 12 })
-                .onChange((value: string) => {
-                  this.username = value
-                  this.errorMessage = ''
-                })
+          IconInput({
+            icon: '👤',
+            placeholder: '请输入用户名',
+            value: $username,
+            onChangeCallback: () => {
+              this.errorMessage = ''
             }
-            .width('100%')
-            .backgroundColor('#f5f7fa')
-            .borderRadius(12)
-            .padding({ left: 16 })
-          }
+          })
           .width('100%')
           .margin({ bottom: 16 })
 
-          Column() {
-            Row() {
-              Text('🔒')
-                .fontSize(18)
-                .margin({ right: 12 })
-
-              TextInput({ placeholder: '请输入密码', text: this.password })
-                .type(this.showPassword ? InputType.Normal : InputType.Password)
-                .width('100%')
-                .height(44)
-                .fontSize(16)
-                .fontColor('#1a1a2e')
-                .placeholderColor('#c0c4cc')
-                .backgroundColor('#f5f7fa')
-                .borderRadius(12)
-                .padding({ left: 12 })
-                .onChange((value: string) => {
-                  this.password = value
-                  this.errorMessage = ''
-                })
+          IconInput({
+            icon: '🔒',
+            placeholder: '请输入密码',
+            value: $password,
+            showPasswordToggle: true,
+            onChangeCallback: () => {
+              this.errorMessage = ''
             }
-            .width('100%')
-            .backgroundColor('#f5f7fa')
-            .borderRadius(12)
-            .padding({ left: 16 })
-          }
+          })
           .width('100%')
           .margin({ bottom: 16 })
 
-          if (this.errorMessage !== '') {
-            Text(this.errorMessage)
-              .fontSize(12)
-              .fontColor('#f56c6c')
-              .width('100%')
-              .alignSelf(ItemAlign.Start)
-              .margin({ bottom: 12 })
-          }
+          ErrorTip({ message: this.errorMessage })
 
           Row() {
             Checkbox({ name: 'remember', group: 'login' })
@@ -238,12 +198,10 @@ struct Login {
       const success: boolean = await this.userViewModel.login()
 
       if (success) {
-        // 保存登录凭证
         if (this.rememberMe) {
           await TokenUtil.saveLoginCredentials(this.username, this.password, true)
           console.info('Login: Credentials saved')
         } else {
-          // 如果取消记住密码，清除之前保存的凭证
           await TokenUtil.clearLoginCredentials()
           console.info('Login: Credentials cleared')
         }

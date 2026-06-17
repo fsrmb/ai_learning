@@ -1,5 +1,7 @@
 import { router } from '@kit.ArkUI'
 import { promptAction } from '@kit.ArkUI'
+import { IconInput } from '../components/IconInput'
+import { ErrorTip } from '../components/ErrorTip'
 
 @Entry
 @Component
@@ -10,7 +12,6 @@ struct Register {
   @State email: string = ''
   @State loading: boolean = false
   @State errorMessage: string = ''
-  @State showPassword: boolean = false
 
   build() {
     Column() {
@@ -59,135 +60,53 @@ struct Register {
           .alignItems(HorizontalAlign.Start)
           .margin({ bottom: 24 })
 
-          Column() {
-            Row() {
-              Text('👤')
-                .fontSize(18)
-                .margin({ right: 12 })
-
-              TextInput({ placeholder: '请输入用户名（6-20位）' })
-                .width('100%')
-                .height(44)
-                .fontSize(16)
-                .fontColor('#1a1a2e')
-                .placeholderColor('#c0c4cc')
-                .backgroundColor('#f5f7fa')
-                .borderRadius(12)
-                .padding({ left: 12 })
-                .onChange((value: string) => {
-                  this.username = value
-                  this.errorMessage = ''
-                })
+          IconInput({
+            icon: '👤',
+            placeholder: '请输入用户名（6-20位）',
+            value: $username,
+            onChangeCallback: () => {
+              this.errorMessage = ''
             }
-            .width('100%')
-            .backgroundColor('#f5f7fa')
-            .borderRadius(12)
-            .padding({ left: 16 })
-          }
+          })
           .width('100%')
           .margin({ bottom: 16 })
 
-          Column() {
-            Row() {
-              Text('📧')
-                .fontSize(18)
-                .margin({ right: 12 })
-
-              TextInput({ placeholder: '请输入邮箱' })
-                .width('100%')
-                .height(44)
-                .fontSize(16)
-                .fontColor('#1a1a2e')
-                .placeholderColor('#c0c4cc')
-                .backgroundColor('#f5f7fa')
-                .borderRadius(12)
-                .padding({ left: 12 })
-                .onChange((value: string) => {
-                  this.email = value
-                  this.errorMessage = ''
-                })
+          IconInput({
+            icon: '📧',
+            placeholder: '请输入邮箱',
+            value: $email,
+            onChangeCallback: () => {
+              this.errorMessage = ''
             }
-            .width('100%')
-            .backgroundColor('#f5f7fa')
-            .borderRadius(12)
-            .padding({ left: 16 })
-          }
+          })
           .width('100%')
           .margin({ bottom: 16 })
 
-          Column() {
-            Row() {
-              Text('🔒')
-                .fontSize(18)
-                .margin({ right: 12 })
-
-              TextInput({ placeholder: '请输入密码（6位以上）' })
-                .type(this.showPassword ? InputType.Normal : InputType.Password)
-                .width('100%')
-                .height(44)
-                .fontSize(16)
-                .fontColor('#1a1a2e')
-                .placeholderColor('#c0c4cc')
-                .backgroundColor('#f5f7fa')
-                .borderRadius(12)
-                .padding({ left: 12 })
-                .onChange((value: string) => {
-                  this.password = value
-                  this.errorMessage = ''
-                })
-
-              Text(this.showPassword ? '👁' : '👁️‍🗨')
-                .fontSize(18)
-                .margin({ left: 12 })
-                .onClick(() => {
-                  this.showPassword = !this.showPassword
-                })
+          IconInput({
+            icon: '🔒',
+            placeholder: '请输入密码（6位以上）',
+            value: $password,
+            showPasswordToggle: true,
+            onChangeCallback: () => {
+              this.errorMessage = ''
             }
-            .width('100%')
-            .backgroundColor('#f5f7fa')
-            .borderRadius(12)
-            .padding({ left: 16, right: 16 })
-          }
+          })
           .width('100%')
           .margin({ bottom: 16 })
 
-          Column() {
-            Row() {
-              Text('🔒')
-                .fontSize(18)
-                .margin({ right: 12 })
-
-              TextInput({ placeholder: '请再次输入密码' })
-                .type(this.showPassword ? InputType.Normal : InputType.Password)
-                .width('100%')
-                .height(44)
-                .fontSize(16)
-                .fontColor('#1a1a2e')
-                .placeholderColor('#c0c4cc')
-                .backgroundColor('#f5f7fa')
-                .borderRadius(12)
-                .padding({ left: 12 })
-                .onChange((value: string) => {
-                  this.confirmPassword = value
-                  this.errorMessage = ''
-                })
+          IconInput({
+            icon: '🔒',
+            placeholder: '请再次输入密码',
+            value: $confirmPassword,
+            showPasswordToggle: true,
+            onChangeCallback: () => {
+              this.errorMessage = ''
             }
-            .width('100%')
-            .backgroundColor('#f5f7fa')
-            .borderRadius(12)
-            .padding({ left: 16 })
-          }
+          })
           .width('100%')
           .margin({ bottom: 16 })
 
-          if (this.errorMessage !== '') {
-            Text(this.errorMessage)
-              .fontSize(12)
-              .fontColor('#f56c6c')
-              .width('100%')
-              .alignSelf(ItemAlign.Start)
-              .margin({ bottom: 12 })
-          }
+          ErrorTip({ message: this.errorMessage })
 
           Button(this.loading ? '注册中...' : '注 册')
             .width('100%')
@@ -277,17 +196,14 @@ struct Register {
     this.errorMessage = ''
 
     try {
-      // 模拟注册请求延迟
       await new Promise<void>((resolve) => setTimeout(resolve, 1000))
 
-      // 弹出注册成功提示
       promptAction.showToast({
         message: '注册成功！',
         duration: 2000,
         bottom: 100
       })
 
-      // 注册成功后返回登录页
       setTimeout(() => {
         router.back()
       }, 1500)

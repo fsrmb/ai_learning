@@ -1,5 +1,8 @@
 import { router } from '@kit.ArkUI'
 import { TokenUtil } from '../common/TokenUtil'
+import { NavBar } from '../components/NavBar'
+import { InfoItem } from '../components/InfoItem'
+import { LoadingView } from '../components/LoadingView'
 
 @Entry
 @Component
@@ -18,42 +21,10 @@ struct Profile {
 
   build() {
     Column() {
-      Row() {
-        Text('←')
-          .fontSize(24)
-          .fontColor('#333333')
-          .padding({ left: 16 })
-          .onClick(() => {
-            router.back()
-          })
-
-        Blank()
-
-        Text('我的资料')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#333333')
-
-        Blank()
-
-        Text('')
-          .width(40)
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#FFFFFF')
-      .alignItems(VerticalAlign.Center)
+      NavBar({ title: '我的资料', showBack: true })
 
       if (this.loading) {
-        Column() {
-          LoadingProgress()
-            .width(50)
-            .height(50)
-            .color('#667eea')
-        }
-        .width('100%')
-        .flexGrow(1)
-        .justifyContent(FlexAlign.Center)
+        LoadingView({ color: '#667eea' })
       } else {
         Column({ space: 0 }) {
           Column() {
@@ -100,11 +71,11 @@ struct Profile {
             .height(1)
             .color('#f0f0f0')
 
-          this.buildInfoItem('昵称', this.name)
-          this.buildInfoItem('职业', this.job)
-          this.buildInfoItem('邮箱', 'example@email.com')
-          this.buildInfoItem('手机号', '138****8888')
-          this.buildInfoItem('注册时间', '2024-01-15')
+          InfoItem({ label: '昵称', value: this.name })
+          InfoItem({ label: '职业', value: this.job })
+          InfoItem({ label: '邮箱', value: 'example@email.com' })
+          InfoItem({ label: '手机号', value: '138****8888' })
+          InfoItem({ label: '注册时间', value: '2024-01-15' })
 
           Button(this.isEditing ? '保存' : '编辑')
             .width('90%')
@@ -138,32 +109,5 @@ struct Profile {
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F7FA')
-  }
-
-  @Builder
-  buildInfoItem(label: string, value: string): void {
-    Column() {
-      Row() {
-        Text(label)
-          .fontSize(15)
-          .fontColor('#666666')
-
-        Blank()
-
-        Text(value)
-          .fontSize(15)
-          .fontColor('#333333')
-          .maxLines(1)
-      }
-      .width('100%')
-      .padding({ left: 20, right: 20, top: 18, bottom: 18 })
-      .backgroundColor('#FFFFFF')
-
-      Divider()
-        .width('100%')
-        .height(0.5)
-        .color('#f5f5f5')
-    }
-    .width('100%')
   }
 }
