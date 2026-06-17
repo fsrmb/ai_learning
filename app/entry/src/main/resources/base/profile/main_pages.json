@@ -2,6 +2,7 @@
   "src": [
     "pages/Login",
     "pages/MainTab",
-    "pages/Profile"
+    "pages/Profile",
+    "pages/Register"
   ]
 }

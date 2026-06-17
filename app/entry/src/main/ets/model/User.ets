@@ -13,11 +13,22 @@ export class LoginRequest {
   password: string = ''
 }
 
+export class UserVO {
+  id: number = 0
+  username: string = ''
+  nickname: string = ''
+  email: string = ''
+  phone: string = ''
+  avatar: string = ''
+  role: string = ''
+  status: number = 0
+  createTime: string = ''
+  updateTime: string = ''
+}
+
 export class LoginResponse {
   token: string = ''
-  userId: number = 0
-  username: string = ''
-  role: string = ''
+  user: UserVO = new UserVO()
 }
 
 export class RegisterRequest {

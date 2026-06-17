@@ -1,77 +1,57 @@
-import { PromptAction, router } from '@kit.ArkUI'
-import { UserViewModel } from '../viewmodel/UserViewModel'
-import { TokenUtil } from '../common/TokenUtil'
+import { router } from '@kit.ArkUI'
+import { promptAction } from '@kit.ArkUI'
 
 @Entry
 @Component
-struct Login {
+struct Register {
   @State username: string = ''
   @State password: string = ''
+  @State confirmPassword: string = ''
+  @State email: string = ''
   @State loading: boolean = false
   @State errorMessage: string = ''
   @State showPassword: boolean = false
-  @State rememberMe: boolean = false
-
-  private userViewModel: UserViewModel = new UserViewModel()
-
-  async aboutToAppear(): Promise<void> {
-    await this.loadSavedCredentials()
-  }
-
-  private async loadSavedCredentials(): Promise<void> {
-    try {
-      const credentials = await TokenUtil.getLoginCredentials()
-      if (credentials.rememberMe) {
-        this.username = credentials.username
-        this.password = credentials.password
-        this.rememberMe = true
-        console.info('Login: Loaded saved credentials')
-      }
-    } catch (err) {
-      console.error('Login: Failed to load credentials:', err)
-    }
-  }
 
   build() {
     Column() {
       Column() {
         Column() {
           Column() {
-            Text('智')
+            Text('👤')
               .fontSize(48)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#FFFFFF')
+              .fontColor('#667eea')
           }
           .width(80)
           .height(80)
-          .backgroundColor('#667eea')
-          .borderRadius(20)
-          .shadow({ radius: 10, color: '#667eea', offsetY: 5 })
+          .backgroundColor('#f0f0f0')
+          .borderRadius(40)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
         }
         .margin({ bottom: 20 })
 
-        Text('AI 伴学平台')
+        Text('用户注册')
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .fontColor('#1a1a2e')
           .margin({ bottom: 8 })
 
-        Text('智能学习，助力成长')
+        Text('创建账号，开始学习之旅')
           .fontSize(14)
           .fontColor('#8898aa')
       }
-      .margin({ top: 80, bottom: 40 })
+      .margin({ top: 60, bottom: 40 })
 
       Column() {
         Column() {
           Column() {
-            Text('欢迎回来')
+            Text('注册账号')
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
               .fontColor('#1a1a2e')
               .margin({ bottom: 4 })
 
-            Text('请登录您的账号')
+            Text('请填写以下信息')
               .fontSize(14)
               .fontColor('#8898aa')
           }
@@ -85,7 +65,7 @@ struct Login {
                 .fontSize(18)
                 .margin({ right: 12 })
 
-              TextInput({ placeholder: '请输入用户名', text: this.username })
+              TextInput({ placeholder: '请输入用户名（6-20位）' })
                 .width('100%')
                 .height(44)
                 .fontSize(16)
@@ -109,11 +89,39 @@ struct Login {
 
           Column() {
             Row() {
+              Text('📧')
+                .fontSize(18)
+                .margin({ right: 12 })
+
+              TextInput({ placeholder: '请输入邮箱' })
+                .width('100%')
+                .height(44)
+                .fontSize(16)
+                .fontColor('#1a1a2e')
+                .placeholderColor('#c0c4cc')
+                .backgroundColor('#f5f7fa')
+                .borderRadius(12)
+                .padding({ left: 12 })
+                .onChange((value: string) => {
+                  this.email = value
+                  this.errorMessage = ''
+                })
+            }
+            .width('100%')
+            .backgroundColor('#f5f7fa')
+            .borderRadius(12)
+            .padding({ left: 16 })
+          }
+          .width('100%')
+          .margin({ bottom: 16 })
+
+          Column() {
+            Row() {
               Text('🔒')
                 .fontSize(18)
                 .margin({ right: 12 })
 
-              TextInput({ placeholder: '请输入密码', text: this.password })
+              TextInput({ placeholder: '请输入密码（6位以上）' })
                 .type(this.showPassword ? InputType.Normal : InputType.Password)
                 .width('100%')
                 .height(44)
@@ -125,6 +133,42 @@ struct Login {
                 .padding({ left: 12 })
                 .onChange((value: string) => {
                   this.password = value
+                  this.errorMessage = ''
+                })
+
+              Text(this.showPassword ? '👁' : '👁️‍🗨')
+                .fontSize(18)
+                .margin({ left: 12 })
+                .onClick(() => {
+                  this.showPassword = !this.showPassword
+                })
+            }
+            .width('100%')
+            .backgroundColor('#f5f7fa')
+            .borderRadius(12)
+            .padding({ left: 16, right: 16 })
+          }
+          .width('100%')
+          .margin({ bottom: 16 })
+
+          Column() {
+            Row() {
+              Text('🔒')
+                .fontSize(18)
+                .margin({ right: 12 })
+
+              TextInput({ placeholder: '请再次输入密码' })
+                .type(this.showPassword ? InputType.Normal : InputType.Password)
+                .width('100%')
+                .height(44)
+                .fontSize(16)
+                .fontColor('#1a1a2e')
+                .placeholderColor('#c0c4cc')
+                .backgroundColor('#f5f7fa')
+                .borderRadius(12)
+                .padding({ left: 12 })
+                .onChange((value: string) => {
+                  this.confirmPassword = value
                   this.errorMessage = ''
                 })
             }
@@ -145,31 +189,7 @@ struct Login {
               .margin({ bottom: 12 })
           }
 
-          Row() {
-            Checkbox({ name: 'remember', group: 'login' })
-              .select(this.rememberMe)
-              .selectedColor('#667eea')
-              .onChange((value: boolean) => {
-                this.rememberMe = value
-              })
-
-            Text('记住密码')
-              .fontSize(13)
-              .fontColor('#525f7f')
-              .margin({ left: 8 })
-
-            Blank()
-
-            Text('忘记密码？')
-              .fontSize(13)
-              .fontColor('#667eea')
-              .onClick(() => {
-              })
-          }
-          .width('100%')
-          .margin({ bottom: 24 })
-
-          Button(this.loading ? '登录中...' : '登 录')
+          Button(this.loading ? '注册中...' : '注 册')
             .width('100%')
             .height(48)
             .backgroundColor('#667eea')
@@ -179,22 +199,22 @@ struct Login {
             .borderRadius(12)
             .shadow({ radius: 8, color: '#667eea', offsetY: 4 })
             .onClick(() => {
-              this.handleLogin()
+              this.handleRegister()
             })
             .enabled(!this.loading)
 
           Row() {
-            Text('还没有账号？')
+            Text('已有账号？')
               .fontSize(14)
               .fontColor('#8898aa')
 
-            Text('立即注册')
+            Text('立即登录')
               .fontSize(14)
               .fontColor('#667eea')
               .fontWeight(FontWeight.Medium)
               .margin({ left: 4 })
               .onClick(() => {
-                router.pushUrl({ url: 'pages/Register' })
+                router.back()
               })
           }
           .width('100%')
@@ -222,38 +242,57 @@ struct Login {
     .backgroundColor('#f5f7fa')
   }
 
-  private async handleLogin(): Promise<void> {
-    if (this.username === '' || this.password === '') {
-      this.errorMessage = '请输入用户名和密码'
+  private async handleRegister(): Promise<void> {
+    if (this.username === '') {
+      this.errorMessage = '请输入用户名'
+      return
+    }
+
+    if (this.username.length < 6 || this.username.length > 20) {
+      this.errorMessage = '用户名长度应为6-20位'
+      return
+    }
+
+    if (this.email === '') {
+      this.errorMessage = '请输入邮箱'
+      return
+    }
+
+    if (this.password === '') {
+      this.errorMessage = '请输入密码'
+      return
+    }
+
+    if (this.password.length < 6) {
+      this.errorMessage = '密码长度应至少6位'
+      return
+    }
+
+    if (this.password !== this.confirmPassword) {
+      this.errorMessage = '两次输入的密码不一致'
       return
     }
 
     this.loading = true
     this.errorMessage = ''
 
-    this.userViewModel.username = this.username
-    this.userViewModel.password = this.password
-
     try {
-      const success: boolean = await this.userViewModel.login()
+      // 模拟注册请求延迟
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000))
 
-      if (success) {
-        // 保存登录凭证
-        if (this.rememberMe) {
-          await TokenUtil.saveLoginCredentials(this.username, this.password, true)
-          console.info('Login: Credentials saved')
-        } else {
-          // 如果取消记住密码，清除之前保存的凭证
-          await TokenUtil.clearLoginCredentials()
-          console.info('Login: Credentials cleared')
-        }
+      // 弹出注册成功提示
+      promptAction.showToast({
+        message: '注册成功！',
+        duration: 2000,
+        bottom: 100
+      })
 
-        router.replaceUrl({ url: 'pages/MainTab' })
-      } else {
-        this.errorMessage = this.userViewModel.errorMessage || '登录失败'
-      }
+      // 注册成功后返回登录页
+      setTimeout(() => {
+        router.back()
+      }, 1500)
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : '登录失败，请重试'
+      this.errorMessage = '注册失败，请重试'
     } finally {
       this.loading = false
     }

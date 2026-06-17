@@ -32,10 +32,10 @@ export default class EntryAbility extends UIAbility {
       const hasToken: boolean = await TokenUtil.hasToken();
       const initialPage: string = hasToken ? 'pages/MainTab' : 'pages/Login';
       // 调试开关：设为 true 时强制进入 Profile
-      const isDebuggingProfile: boolean = true;
+      const isDebuggingProfile: boolean = false;
 
       if (isDebuggingProfile) {
-        windowStage.loadContent('pages/Profile', (err) => {
+        windowStage.loadContent('pages/Login', (err) => {
           if (err.code) {
             hilog.error(DOMAIN, 'testTag', 'Failed to load Profile. Cause: %{public}s', JSON.stringify(err));
           }
