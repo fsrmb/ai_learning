@@ -5,13 +5,41 @@ import { TokenUtil } from '../common/TokenUtil'
 @Component
 struct MainTab {
   @State currentTab: number = 0
+  @State username: string = ''
+  @State isLoaded: boolean = false
 
   private tabs: TabItem[] = [
     { name: '首页', icon: '🏠', path: '' },
     { name: '技能树', icon: '🌳', path: '' },
     { name: 'AI 聊天', icon: '💬', path: '' },
-    { name: '我的', icon: '👤', path: '' }
+    { name: '我的', icon: '👤', path: 'pages/Profile' }
   ]
+
+  aboutToAppear(): void {
+    this.loadUserData()
+  }
+
+  private async loadUserData(): Promise<void> {
+    try {
+      const storedUsername = await TokenUtil.getUsername()
+      this.username = storedUsername
+      console.info(`MainTab: Loaded username: "${this.username}"`)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load user data'
+      console.error('MainTab: Failed to load username:', errorMessage)
+      this.username = ''
+    } finally {
+      this.isLoaded = true
+    }
+  }
+
+  private handleTabClick(index: number): void {
+    this.currentTab = index
+    const tab = this.tabs[index]
+    if (tab.path !== '') {
+      router.pushUrl({ url: tab.path })
+    }
+  }
 
   build() {
     Column() {
@@ -28,18 +56,26 @@ struct MainTab {
       .shadow({ radius: 4, color: '#000000' })
 
       Column() {
-        Text('欢迎使用 AI 伴学平台！')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#1a1a2e')
-          .margin({ bottom: 8 })
+        if (this.isLoaded && this.username !== '') {
+          Text(`欢迎回来，${this.username}！`)
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1a1a2e')
+            .margin({ bottom: 8 })
+        } else {
+          Text('欢迎使用 AI 伴学平台！')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1a1a2e')
+            .margin({ bottom: 8 })
+        }
 
         Text('智能学习，助力成长')
           .fontSize(14)
           .fontColor('#8898aa')
       }
+      .flexGrow(1)
       .width('100%')
-      .height('100%')
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
 
@@ -59,7 +95,7 @@ struct MainTab {
           .height(56)
           .justifyContent(FlexAlign.Center)
           .onClick(() => {
-            this.currentTab = index
+            this.handleTabClick(index)
           })
         })
       }
@@ -75,8 +111,14 @@ struct MainTab {
   }
 
   async onPageShow(): Promise<void> {
-    const hasToken: boolean = await TokenUtil.hasToken()
-    if (!hasToken) {
+    try {
+      const hasToken = await TokenUtil.hasToken()
+      if (!hasToken) {
+        router.replaceUrl({ url: 'pages/Login' })
+        return
+      }
+      this.loadUserData()
+    } catch (err) {
       router.replaceUrl({ url: 'pages/Login' })
     }
   }
