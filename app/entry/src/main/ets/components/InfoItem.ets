@@ -3,7 +3,7 @@ export struct InfoItem {
   @Prop label: string = ''
   @Prop value: string = ''
   @Prop showArrow: boolean = false
-  onClick: () => void = () => {}
+  onTap: () => void = () => {}
 
   build() {
     Column() {
@@ -29,7 +29,7 @@ export struct InfoItem {
       .width('100%')
       .padding({ left: 20, right: 20, top: 18, bottom: 18 })
       .backgroundColor('#FFFFFF')
-      .onClick(this.onClick)
+      .onClick(this.onTap)
 
       Divider()
         .width('100%')

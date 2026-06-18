@@ -1,8 +1,12 @@
 import { router } from '@kit.ArkUI'
-import { DifyChatViewModel, Conversation } from '../viewmodel/DifyChatViewModel'
+import { DifyChatViewModel } from '../viewmodel/DifyChatViewModel'
 import { ChatMessage } from '../model/ChatMessage'
 import { DateUtil } from '../common/DateUtil'
 import { MarkdownUtil } from '../common/MarkdownUtil'
+import { webview } from '@kit.ArkWeb'
+import { HistoryPanel } from '../components/HistoryPanel'
+import { ConversationRecord } from '../common/ConversationHistory'
+import { getContext } from '@kit.AbilityKit'
 
 /**
  * Dify 聊天页面
@@ -15,8 +19,9 @@ import { MarkdownUtil } from '../common/MarkdownUtil'
  *   - blocking / streaming 两种模式切换
  *   - 多轮对话（conversation_id 自动传递）
  *   - 流式打字机效果
- *   - 对话历史面板
+ *   - 对话历史面板（持久化存储）
  *   - 新建对话 / 清空消息
+ *   - 会话切换
  *
  * 使用前请在 main_pages.json 中注册 "pages/DifyChat"
  */
@@ -25,8 +30,37 @@ import { MarkdownUtil } from '../common/MarkdownUtil'
 struct DifyChatPage {
   @State viewModel: DifyChatViewModel = new DifyChatViewModel()
   @State inputText: string = ''
+  @State showHistory: boolean = false
   private scroller: Scroller = new Scroller()
 
+  /**
+   * 页面显示时初始化历史记录
+   */
+  onPageShow(): void {
+    this.viewModel.initHistory(getContext())
+  }
+
+  /**
+   * 关闭历史面板
+   */
+  closeHistory(): void {
+    this.showHistory = false
+  }
+
+  /**
+   * 选择历史会话
+   */
+  async selectConversation(record: ConversationRecord): Promise<void> {
+    await this.viewModel.switchConversation(record)
+    this.showHistory = false
+  }
+
+  /**
+   * 删除历史会话
+   */
+  async deleteConversation(record: ConversationRecord): Promise<void> {
+    await this.viewModel.deleteConversation(record)
+  }
 
   build() {
     Stack({ alignContent: Alignment.TopEnd }) {
@@ -56,18 +90,24 @@ struct DifyChatPage {
             .fontSize(14)
             .fontColor('#E6A23C')
             .margin({ right: 8 })
-            .onClick(() => this.viewModel.toggleHistory())
+            .onClick(() => {
+              this.showHistory = true
+            })
           // 新对话
           Text('新对话')
             .fontSize(14)
             .fontColor('#67C23A')
             .margin({ right: 8 })
-            .onClick(() => this.viewModel.newConversation())
+            .onClick(async () => {
+              await this.viewModel.newConversation()
+            })
           // 清空
           Text('清空')
             .fontSize(14)
             .fontColor('#F56C6C')
-            .onClick(() => this.viewModel.clearMessages())
+            .onClick(async () => {
+              await this.viewModel.clearMessages()
+            })
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 12, bottom: 12 })
@@ -87,6 +127,10 @@ struct DifyChatPage {
               .fontSize(12)
               .fontColor('#999')
               .margin({ top: 8 })
+            Text('点击「历史」查看过往对话')
+              .fontSize(12)
+              .fontColor('#999')
+              .margin({ top: 8 })
           }
           .width('100%')
           .layoutWeight(1)
@@ -102,7 +146,7 @@ struct DifyChatPage {
                     Blank()
                     Column() {
                       Text(msg.content)
-                        .fontSize(15)
+                        .fontSize(16)
                         .fontColor('#fff')
                         .padding(12)
                         .borderRadius(12)
@@ -117,36 +161,48 @@ struct DifyChatPage {
                   .width('100%')
                   .padding({ left: 60, right: 12, top: 8, bottom: 8 })
                 } else {
-                  // AI 消息：灰色气泡，左对齐（Markdown 渲染）
+                  // AI 消息：灰色气泡，左对齐（使用 Web 组件渲染 Markdown）
                   Row() {
                     Column() {
-                      // 并没有改变源数据
-                      RichText(MarkdownUtil.toHtml(msg.content))
+                      Web({
+                        src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtml(msg.content))}`,
+                        controller: new webview.WebviewController(),
+                        renderMode: RenderMode.SYNC_RENDER
+                      })
+                        .layoutMode(WebLayoutMode.FIT_CONTENT)
+                        .overScrollMode(OverScrollMode.NEVER)
                         .width('100%')
-                        .padding(12)
-                        .borderRadius(12)
                         .backgroundColor('#F4F4F5')
-                      Text(DateUtil.format(msg.timestamp))
-                        .fontSize(10)
-                        .fontColor('#ccc')
-                        .margin({ top: 4 })
+                        .borderRadius(12)
+                        .javaScriptAccess(true)
+                        .zoomAccess(false)
+                        .padding(12)
                     }
-                    .alignItems(HorizontalAlign.Start)
-                    Blank()
+                    .height('auto')
+                    .width('70%')
+                    .borderRadius(12)
+                    .backgroundColor('#F4F4F5')
                   }
-                  .width('100%')
+                  .alignItems(VerticalAlign.Top)
                   .padding({ left: 12, right: 60, top: 8, bottom: 8 })
+                  .width('100%')
                 }
               }
             })
 
-            // 流式输出中的临时消息（Markdown 渲染）
+            // 流式输出中的临时消息（使用 Web 组件渲染 Markdown）
             if (this.viewModel.sending && this.viewModel.streamingContent) {
               ListItem() {
                 Row() {
                   Column() {
-                    RichText(MarkdownUtil.toHtml(this.viewModel.streamingContent))
-                      .width('100%')
+                    Web({
+                      src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtml(this.viewModel.streamingContent))}`,
+                      controller: new webview.WebviewController(),
+                      renderMode: RenderMode.SYNC_RENDER
+                    })
+                      .layoutMode(WebLayoutMode.FIT_CONTENT)
+                      .overScrollMode(OverScrollMode.NEVER)
+                      .width('70%')
                       .padding(12)
                       .borderRadius(12)
                       .backgroundColor('#F4F4F5')
@@ -183,9 +239,6 @@ struct DifyChatPage {
           .layoutWeight(1)
           .width('100%')
           .backgroundColor('#F5F7FA')
-          .onScrollIndex((first: number, last: number) => {
-            // 滚动监听，可用于后续扩展
-          })
         }
 
         // ===== 输入栏 =====
@@ -207,15 +260,11 @@ struct DifyChatPage {
             .onClick(() => {
               const msg = this.inputText.trim()
               if (msg) {
-                // 获取输入框消息，调用发送函数
                 this.viewModel.sendMessage(msg)
-                // 清空输入框
                 this.inputText = ''
-                // 发送后滚动到底部，让UI渲染先行
                 setTimeout(() => {
                   this.scroller.scrollEdge(Edge.Bottom)
                 }, 100)
-                // 机制1000S，定时器，异步操作。主函数栈没有任务 异步事件栈 EventLoop
               }
             })
         }
@@ -227,74 +276,14 @@ struct DifyChatPage {
       .height('100%')
 
       // ===== 历史面板（从右侧滑出） =====
-      if (this.viewModel.showHistory) {
-        Column() {
-          // 面板标题
-          Row() {
-            Text('对话历史')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-            Blank()
-            Text('✕')
-              .fontSize(18)
-              .fontColor('#999')
-              .onClick(() => this.viewModel.toggleHistory())
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-
-          if (this.viewModel.history.length === 0) {
-            Column() {
-              Text('📭')
-                .fontSize(48)
-              Text('暂无对话历史')
-                .fontSize(14)
-                .fontColor('#999')
-                .margin({ top: 12 })
-            }
-            .width('100%')
-            .layoutWeight(1)
-            .justifyContent(FlexAlign.Center)
-          } else {
-            List({ space: 8 }) {
-              ForEach(this.viewModel.history, (conv: Conversation) => {
-                ListItem() {
-                  Column() {
-                    Text(conv.title)
-                      .fontSize(14)
-                      .fontColor('#333')
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-                    Row() {
-                      Text(DateUtil.format(conv.createdAt))
-                        .fontSize(12)
-                        .fontColor('#999')
-                      Blank()
-                      Text(`${conv.messageCount} 条消息`)
-                        .fontSize(12)
-                        .fontColor('#999')
-                    }
-                    .width('100%')
-                    .margin({ top: 4 })
-                  }
-                  .width('100%')
-                  .padding(12)
-                  .borderRadius(8)
-                  .backgroundColor('#fff')
-                }
-                .onClick(() => this.viewModel.loadHistory(conv))
-              })
-            }
-            .width('100%')
-            .layoutWeight(1)
-            .padding({ left: 16, right: 16 })
-          }
-        }
-        .width('70%')
-        .height('100%')
-        .backgroundColor('#F5F7FA')
-        .shadow({ radius: 16, color: 'rgba(0,0,0,0.15)' })
-      }
+      HistoryPanel({
+        visible: this.showHistory,
+        history: this.viewModel.history,
+        currentConversationId: this.viewModel.conversationId
+      })
+        .onClose(() => this.closeHistory())
+        .onSelect((record) => this.selectConversation(record))
+        .onDelete((record) => this.deleteConversation(record))
     }
     .width('100%')
     .height('100%')

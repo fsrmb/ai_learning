@@ -1,5 +1,8 @@
 import { ChatMessage } from '../model/ChatMessage'
-import { DifyApi } from '../http/DifyApi'
+import { DifyApi, StreamCallbacks } from '../http/DifyApi'
+import { Constants } from '../common/Constants'
+import { ConversationHistory, ConversationRecord } from '../common/ConversationHistory'
+import { Context } from '@kit.AbilityKit'
 
 /**
  * Dify 聊天 ViewModel
@@ -11,40 +14,50 @@ import { DifyApi } from '../http/DifyApi'
  * 支持两种模式：
  *   - blocking：同步等待，代码简单
  *   - streaming：流式输出，打字机效果（默认）
+ *
+ * 会话管理：
+ *   - 支持多会话切换
+ *   - 历史记录持久化存储（Preferences）
  */
-
-// 对话会话（历史记录用）
-export class Conversation {
-  id: string = ''
-  title: string = ''
-  createdAt: number = 0
-  messageCount: number = 0
-}
 
 @Observed
 export class DifyChatViewModel {
   messages: ChatMessage[] = []
   sending: boolean = false
-  // 流式输出
   streamingContent: string = ''
-  // 会话ID， 传了会话ID，多轮对话
   conversationId: string = ''
+  currentTitle: string = ''
 
-  // 对话历史列表
-  history: Conversation[] = []
-  showHistory: boolean = false
+  // 对话历史列表（从持久化存储加载）
+  history: ConversationRecord[] = []
 
   // 模式切换：'blocking' 或 'streaming'
   mode: string = 'streaming'
 
   private difyApi: DifyApi
+  private historyManager: ConversationHistory
 
   constructor() {
-    // TODO: 替换为你自己的 Dify API Key 和地址
     this.difyApi = new DifyApi(
-      'app-X0fv7zO7CmnXfWmM105irTRN',
-      'http://172.20.10.3/v1'
+      'app-b3e3vd7rYn1PEThoxkGBB7Kf',
+      'http://192.168.100.101/v1'
     )
+    this.historyManager = ConversationHistory.getInstance()
+  }
+
+  /**
+   * 初始化历史记录管理器
+   */
+  async initHistory(context: Context): Promise<void> {
+    await this.historyManager.init(context)
+    await this.loadAllHistory()
+  }
+
+  /**
+   * 加载所有历史会话
+   */
+  async loadAllHistory(): Promise<void> {
+    this.history = await this.historyManager.getAllConversations()
   }
 
   // ========================================
@@ -58,12 +71,10 @@ export class DifyChatViewModel {
       content: content,
       timestamp: Date.now()
     }
-    // 页面中直接显示
     this.messages.push(userMsg)
 
     // ② 调用 Dify
     this.sending = true
-    // 逐步拼接每次返回数据值
     this.streamingContent = ''
 
     try {
@@ -73,6 +84,7 @@ export class DifyChatViewModel {
         await this.sendStreaming(content)
       }
     } catch (err) {
+      console.error('DifyChatViewModel sendMessage failed:', err)
       const errMsg: ChatMessage = {
         role: 'assistant',
         content: `请求失败：${String(err)}`,
@@ -92,15 +104,13 @@ export class DifyChatViewModel {
   private async sendBlocking(content: string): Promise<void> {
     const reply = await this.difyApi.chatBlocking(content, this.conversationId)
 
-    //
     const aiMsg: ChatMessage = {
       role: 'assistant',
       content: reply,
       timestamp: Date.now()
     }
-    //
     this.messages.push(aiMsg)
-    this.saveToHistory(content)
+    await this.saveToHistory(content, reply)
   }
 
   // ========================================
@@ -108,32 +118,38 @@ export class DifyChatViewModel {
   // ========================================
 
   private async sendStreaming(content: string): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      this.difyApi.chatStreaming(content, this.conversationId, {
-        onChunk: (text: string) => {
-          // 每收到一段文字，实时更新 streamingContent
-          // @Observed 会自动触发 UI 刷新
-          this.streamingContent += text
-        },
-        onComplete: (convId: string) => {
-          // 流式结束，将完整内容作为一条 AI 消息加入列表
-          if (convId) {
-            this.conversationId = convId
-          }
-          const aiMsg: ChatMessage = {
-            role: 'assistant',
-            content: this.streamingContent,
-            timestamp: Date.now()
-          }
-          this.messages.push(aiMsg)
-          this.saveToHistory(content)
-          resolve()
-        },
-        onError: (error: string) => {
-          reject(new Error(error))
+    console.log('DifyChatViewModel sendStreaming starting...')
+
+    const callbacks: StreamCallbacks = {
+      onChunk: (text: string) => {
+        console.log('DifyChatViewModel onChunk:', text)
+        this.streamingContent += text
+      },
+      onComplete: (convId: string) => {
+        console.log('DifyChatViewModel onComplete, convId:', convId)
+        if (convId) {
+          this.conversationId = convId
         }
-      })
-    })
+        const aiMsg: ChatMessage = {
+          role: 'assistant',
+          content: this.streamingContent,
+          timestamp: Date.now()
+        }
+        this.messages.push(aiMsg)
+        this.saveToHistory(content, this.streamingContent)
+      },
+      onError: (error: string) => {
+        console.error('DifyChatViewModel onError:', error)
+        const errMsg: ChatMessage = {
+          role: 'assistant',
+          content: `请求失败：${error}`,
+          timestamp: Date.now()
+        }
+        this.messages.push(errMsg)
+      }
+    }
+
+    await this.difyApi.chatStreaming(content, this.conversationId, callbacks)
   }
 
   // ========================================
@@ -141,15 +157,23 @@ export class DifyChatViewModel {
   // ========================================
 
   /** 清空所有消息和会话 */
-  clearMessages(): void {
+  async clearMessages(): Promise<void> {
+    this.messages = []
+    this.streamingContent = ''
+    if (this.conversationId) {
+      await this.historyManager.deleteConversation(this.conversationId)
+    }
+    this.conversationId = ''
+    this.currentTitle = ''
+    await this.loadAllHistory()
+  }
+
+  /** 新建对话（重置会话 ID） */
+  async newConversation(): Promise<void> {
     this.messages = []
     this.streamingContent = ''
     this.conversationId = ''
-  }
-
-  /** 新建对话（重置会话 ID，但不清消息） */
-  newConversation(): void {
-    this.conversationId = ''
+    this.currentTitle = ''
   }
 
   /** 切换 blocking / streaming 模式 */
@@ -157,42 +181,80 @@ export class DifyChatViewModel {
     this.mode = this.mode === 'blocking' ? 'streaming' : 'blocking'
   }
 
-  /** 切换历史面板显示 */
-  toggleHistory(): void {
-    this.showHistory = !this.showHistory
-  }
-
-  /** 加载历史对话 */
-  loadHistory(conv: Conversation): void {
+  /**
+   * 切换到指定历史会话
+   */
+  async switchConversation(record: ConversationRecord): Promise<void> {
     this.messages = []
-    this.conversationId = ''
-    this.showHistory = false
+    this.conversationId = record.conversationId
+    this.currentTitle = record.title
 
-    const tipMsg: ChatMessage = {
+    const welcomeMsg: ChatMessage = {
       role: 'assistant',
-      content: `已切换到对话：${conv.title}\n（后端接口实现后会加载完整历史消息）`,
+      content: `欢迎回来！继续"${record.title}"的对话`,
       timestamp: Date.now()
     }
-    this.messages.push(tipMsg)
+    this.messages.push(welcomeMsg)
+
+    // 更新历史记录的时间戳（标记为最新）
+    await this.historyManager.updateLastMessage(
+      record.conversationId,
+      record.lastMessage,
+      Date.now()
+    )
+    await this.loadAllHistory()
+  }
+
+  /**
+   * 删除指定历史会话
+   */
+  async deleteConversation(record: ConversationRecord): Promise<void> {
+    await this.historyManager.deleteConversation(record.conversationId)
+    await this.loadAllHistory()
+
+    // 如果删除的是当前会话，重置
+    if (this.conversationId === record.conversationId) {
+      this.conversationId = ''
+      this.currentTitle = ''
+      this.messages = []
+    }
   }
 
   // ========================================
-  // 历史记录（内存模拟）存储在前端模拟，  后端设计的数据库，或者是直接依赖Dify
+  // 历史记录管理（持久化存储）
   // ========================================
 
-  private saveToHistory(content: string): void {
-    const title = content.length > 20 ? content.substring(0, 20) + '...' : content
+  /**
+   * 保存会话到历史记录
+   */
+  private async saveToHistory(userMessage: string, aiReply: string): Promise<void> {
+    const now = Date.now()
+
+    // 生成标题（取用户消息的前 20 个字符）
+    const title = userMessage.length > 20 ? userMessage.substring(0, 20) + '...' : userMessage
 
     if (!this.conversationId) {
-      const conv: Conversation = {
-        id: Date.now().toString(),
-        title: title,
-        createdAt: Date.now(),
-        messageCount: this.messages.length
+      // 新会话，创建记录
+      const record = new ConversationRecord(
+        'temp-' + now,
+        title,
+        aiReply.substring(0, 50) + (aiReply.length > 50 ? '...' : ''),
+        now,
+        this.messages.length
+      )
+      await this.historyManager.addOrUpdate(record)
+      this.currentTitle = title
+    } else {
+      // 已有会话，更新记录
+      const record = await this.historyManager.getConversation(this.conversationId)
+      if (record) {
+        record.lastMessage = aiReply.substring(0, 50) + (aiReply.length > 50 ? '...' : '')
+        record.timestamp = now
+        record.messageCount = this.messages.length
+        await this.historyManager.addOrUpdate(record)
       }
-      this.history.unshift(conv)
-    } else if (this.history.length > 0) {
-      this.history[0].messageCount = this.messages.length
     }
+
+    await this.loadAllHistory()
   }
 }

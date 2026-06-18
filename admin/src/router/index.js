@@ -2,6 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
+    path: '/test',
+    name: 'Test',
+    component: () => import('../views/test1.vue')
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue')
@@ -21,6 +26,16 @@ const routes = [
         path: '/users',
         name: 'Users',
         component: () => import('../views/Users.vue')
+      },
+      {
+        path: '/learning',
+        name: 'Learning',
+        component: () => import('../views/LearningRecord.vue')
+      },
+      {
+        path: '/skilltree',
+        name: 'SkillTree',
+        component: () => import('../views/SkillTree.vue')
       }
     ]
   }

@@ -6,7 +6,8 @@ export struct IconInput {
   @Link value: string
   @Prop showPasswordToggle: boolean = false
   @State isPasswordVisible: boolean = false
-  @Prop onChangeCallback: (value: string) => void = () => {}
+  // 回调函数不能使用 @Prop 装饰器，使用普通属性即可
+  onChangeCallback: (value: string) => void = () => {}
 
   build() {
     Row() {

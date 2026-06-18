@@ -53,7 +53,7 @@
         "reason": "$string:EntryAbility_desc",
         "usedScene": {
           "abilities": [
-            "FormAbility"
+            "EntryAbility"
           ],
           "when": "inuse"
         }

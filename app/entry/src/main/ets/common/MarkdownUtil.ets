@@ -63,11 +63,71 @@ export class MarkdownUtil {
     //    必须最后处理，避免干扰上面的多行正则
     html = html.replace(/\n/g, '<br>')
 
-    // ⑨ 包裹基础样式
-    return '<div style="font-size:15px;line-height:1.6;color:#333;word-break:break-all;">' +
+    // ⑨ 包裹基础样式（字体大小调整为 32px）
+    return '<div style="font-size:32px;line-height:1.4;color:#333;word-break:break-all;">' +
       html + '</div>'
   }
+  static toHtmlWithCustomStyle(markdown: string): string {
+    // 先用原有方法转换为 HTML
+    const html = MarkdownUtil.toHtml(markdown);
 
+    // 包裹自定义样式：字体大小 16px，适合移动端
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body {
+          font-size: 16px;        /* 调整字体大小 */
+          line-height: 1.4;       /* 行高 */
+          color: #333;
+          margin: 0;
+          padding: 4px 0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        code {
+          font-size: 16px;
+          background-color: #f0f0f0;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+        pre {
+          background-color: #f5f5f5;
+          padding: 12px;
+          border-radius: 8px;
+          overflow-x: auto;
+          font-size: 15px;
+        }
+        blockquote {
+          border-left: 4px solid #409EFF;
+          margin: 8px 0;
+          padding-left: 12px;
+          color: #666;
+        }
+        a {
+          color: #409EFF;
+          text-decoration: none;
+        }
+        img {
+          max-width: 100%;
+          border-radius: 8px;
+        }
+        ul, ol {
+          padding-left: 20px;
+        }
+        h1, h2, h3 {
+          margin: 8px 0;
+        }
+      </style>
+    </head>
+    <body>
+      ${html}
+    </body>
+    </html>
+  `;
+  }
   /**
    * HTML 特殊字符转义
    * 防止代码块中的 < > & 被浏览器解析为 HTML 标签

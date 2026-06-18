@@ -276,7 +276,9 @@ router.replaceUrl({ url: 'pages/MainTab' })
 7. **不要在 build() 函数中执行副作用**（网络请求、文件读写），应在生命周期函数中处理
 8. **数组遍历必须使用 ForEach 并提供 keyGenerator**，不要用 `.map()`
 9. **接口地址不要硬编码**，统一使用 `Constants.BASE_URL` + 路径
-10. **Token 操作不要直接读写 Preferences**，统一使用 `TokenUtil` 工具类
+10. **Token 操作不要直接读写 Preferences**，统一使用 `TokenUtil` 
+11. **不要随便删掉注释，部分代码块需要加上注释**
+工具类
 
 ---
 

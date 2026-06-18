@@ -64,12 +64,53 @@
         style="margin-top: 20px; text-align: right;"
       />
     </el-card>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="500px"
+      @close="handleDialogClose"
+    >
+      <el-form
+        ref="userFormRef"
+        :model="userForm"
+        :rules="userFormRules"
+        label-width="80px"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="userForm.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="昵称" prop="nickname">
+          <el-input v-model="userForm.nickname" placeholder="请输入昵称" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="userForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="userForm.role" placeholder="请选择角色" style="width: 100%;">
+            <el-option label="管理员" value="admin" />
+            <el-option label="普通用户" value="user" />
+            <el-option label="访客" value="guest" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="userForm.status">
+            <el-radio :label="1">正常</el-radio>
+            <el-radio :label="0">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '../utils/request'
 
 const searchForm = reactive({
@@ -84,6 +125,7 @@ const pagination = reactive({
 })
 
 const userList = ref([])
+const allUsers = ref([])
 const loading = ref(false)
 
 const roleMap = {
@@ -96,52 +138,68 @@ const getRoleLabel = (role) => {
   return roleMap[role] || role
 }
 
-const loadUsers = async () => {
-  loading.value = true
-  try {
-    const params = {
-      page: pagination.page,
-      size: pagination.size,
-      keyword: searchForm.keyword,
-      role: searchForm.role
-    }
-    
-    const response = await request.get('/api/users', { params })
-    
-    if (response.data) {
-      userList.value = response.data.list || response.data
-      pagination.total = response.data.total || 100
-    } else {
-      userList.value = mockUsers()
-      pagination.total = 100
-    }
-  } catch (error) {
-    console.error('获取用户列表失败:', error)
-    userList.value = mockUsers()
-    pagination.total = 100
-    ElMessage.error('获取用户列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
 const mockUsers = () => {
   const roles = ['admin', 'user', 'guest']
   const users = []
-  for (let i = 1; i <= pagination.size; i++) {
-    const id = (pagination.page - 1) * pagination.size + i
+  for (let i = 1; i <= 100; i++) {
     const role = roles[Math.floor(Math.random() * roles.length)]
     users.push({
-      id: id,
-      username: `user${id}`,
-      nickname: `用户${id}`,
-      email: `user${id}@example.com`,
+      id: i,
+      username: `user${i}`,
+      nickname: `用户${i}`,
+      email: `user${i}@example.com`,
       role: role,
       status: Math.random() > 0.15 ? 1 : 0,
       createTime: `2024-01-${String(Math.floor(Math.random() * 30) + 1).padStart(2, '0')} 10:30:00`
     })
   }
   return users
+}
+
+const filterUsers = () => {
+  let filtered = [...allUsers.value]
+  
+  // 关键词过滤
+  if (searchForm.keyword) {
+    const keyword = searchForm.keyword.toLowerCase()
+    filtered = filtered.filter(user => 
+      user.username.toLowerCase().includes(keyword) ||
+      user.nickname.toLowerCase().includes(keyword) ||
+      user.email.toLowerCase().includes(keyword)
+    )
+  }
+  
+  // 角色过滤
+  if (searchForm.role) {
+    filtered = filtered.filter(user => user.role === searchForm.role)
+  }
+  
+  return filtered
+}
+
+const loadUsers = async () => {
+  loading.value = true
+  try {
+    // 首次加载时生成所有数据
+    if (allUsers.value.length === 0) {
+      allUsers.value = mockUsers()
+    }
+    
+    // 根据搜索条件过滤数据
+    const filtered = filterUsers()
+    
+    // 分页处理
+    const start = (pagination.page - 1) * pagination.size
+    const end = start + pagination.size
+    userList.value = filtered.slice(start, end)
+    pagination.total = filtered.length
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    userList.value = []
+    pagination.total = 0
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleSearch = () => {
@@ -167,17 +225,114 @@ const handleSizeChange = (size) => {
   loadUsers()
 }
 
+const dialogVisible = ref(false)
+const dialogTitle = ref('新增用户')
+const userForm = reactive({
+  id: null,
+  username: '',
+  nickname: '',
+  email: '',
+  role: 'user',
+  status: 1
+})
+
+const userFormRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
+  ],
+  nickname: [
+    { required: true, message: '请输入昵称', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+  ],
+  role: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ]
+}
+
+const userFormRef = ref(null)
+
 const handleAdd = () => {
-  ElMessage.info('新增用户功能')
+  dialogTitle.value = '新增用户'
+  resetUserForm()
+  dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
-  ElMessage.info(`编辑用户: ${row.username}`)
+  dialogTitle.value = '编辑用户'
+  Object.assign(userForm, {
+    id: row.id,
+    username: row.username,
+    nickname: row.nickname,
+    email: row.email,
+    role: row.role,
+    status: row.status
+  })
+  dialogVisible.value = true
+}
+
+const resetUserForm = () => {
+  userForm.id = null
+  userForm.username = ''
+  userForm.nickname = ''
+  userForm.email = ''
+  userForm.role = 'user'
+  userForm.status = 1
+  if (userFormRef.value) {
+    userFormRef.value.clearValidate()
+  }
+}
+
+const handleDialogClose = () => {
+  resetUserForm()
+}
+
+const handleSubmit = async () => {
+  if (!userFormRef.value) return
+  
+  await userFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (userForm.id) {
+          // 编辑用户 - 本地更新
+          const index = userList.value.findIndex(u => u.id === userForm.id)
+          if (index !== -1) {
+            userList.value[index] = {
+              ...userList.value[index],
+              username: userForm.username,
+              nickname: userForm.nickname,
+              email: userForm.email,
+              role: userForm.role,
+              status: userForm.status
+            }
+          }
+          ElMessage.success('编辑成功')
+        } else {
+          // 新增用户
+          const newUser = {
+            ...userForm,
+            id: Date.now(),
+            createTime: new Date().toLocaleString('zh-CN')
+          }
+          userList.value.unshift(newUser)
+          pagination.total += 1
+          ElMessage.success('新增成功')
+        }
+        dialogVisible.value = false
+      } catch (error) {
+        console.error('操作失败:', error)
+        ElMessage.error('操作失败')
+      }
+    }
+  })
 }
 
 const handleDelete = async (row) => {
   try {
-    await ElMessage.confirm(
+    await ElMessageBox.confirm(
       `确定要删除用户 ${row.username} 吗？`,
       '提示',
       {
@@ -187,16 +342,15 @@ const handleDelete = async (row) => {
       }
     )
     
-    try {
-      await request.delete(`/api/users/${row.id}`)
+    // 本地删除 - 从 allUsers 中删除
+    const index = allUsers.value.findIndex(u => u.id === row.id)
+    if (index !== -1) {
+      allUsers.value.splice(index, 1)
       ElMessage.success('删除成功')
       loadUsers()
-    } catch (error) {
-      console.error('删除用户失败:', error)
-      ElMessage.error('删除失败')
     }
   } catch (error) {
-    ElMessage.info('已取消删除')
+    // 用户点击取消，不显示消息
   }
 }
 

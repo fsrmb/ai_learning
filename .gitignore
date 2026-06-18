@@ -1,3 +1,5 @@
 node_modules
 dist
 .idea
+views/test1.vue
+views/test.vue

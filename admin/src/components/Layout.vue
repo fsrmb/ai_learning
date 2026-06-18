@@ -1,7 +1,10 @@
 <template>
   <el-container class="layout-container">
-    <el-aside width="200px" class="aside">
-      <div class="logo">Vue3 管理后台</div>
+    <el-aside :width="isCollapse ? '64px' : '200px'" class="aside">
+      <div class="logo">
+        <span v-show="!isCollapse">Vue3 管理后台</span>
+        <span v-show="isCollapse" class="logo-icon">V</span>
+      </div>
       <el-menu
         :default-active="activeMenu"
         class="menu"
@@ -9,6 +12,7 @@
         background-color="#2f4050"
         text-color="#fff"
         active-text-color="#409EFF"
+        :collapse="isCollapse"
       >
         <el-menu-item index="home" @click="handleMenuClick('/home')">
           <el-icon><component :is="House" /></el-icon>
@@ -18,7 +22,23 @@
           <el-icon><component :is="User" /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
+        <el-menu-item index="learning" @click="handleMenuClick('/learning')">
+          <el-icon><component :is="Document" /></el-icon>
+          <span>学习记录</span>
+        </el-menu-item>
+        <el-menu-item index="skilltree" @click="handleMenuClick('/skilltree')">
+          <el-icon><component :is="Folder" /></el-icon>
+          <span>技能树管理</span>
+        </el-menu-item>
       </el-menu>
+      <el-button
+        type="text"
+        class="collapse-btn"
+        @click="toggleCollapse"
+        :title="isCollapse ? '展开菜单' : '收起菜单'"
+      >
+        <el-icon><component :is="isCollapse ? ArrowRight : ArrowLeft" /></el-icon>
+      </el-button>
     </el-aside>
     <el-container>
       <el-header class="header">
@@ -38,14 +58,22 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { House, User } from '@element-plus/icons-vue'
+import { House, User, ArrowLeft, ArrowRight, Document, Folder } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 
+const isCollapse = ref(false)
+
+const toggleCollapse = () => {
+  isCollapse.value = !isCollapse.value
+}
+
 const menuMap = {
   home: '首页',
-  users: '用户管理'
+  users: '用户管理',
+  learning: '学习记录',
+  skilltree: '技能树管理'
 }
 
 const activeMenu = computed(() => {
@@ -83,10 +111,15 @@ const handleLogout = async () => {
 <style scoped>
 .layout-container {
   height: 100vh;
+  display: flex;
 }
 
 .aside {
   background-color: #2f4050;
+  overflow: hidden;
+  transition: width 0.3s ease, min-width 0.3s ease;
+  flex-shrink: 0;
+  position: relative;
 }
 
 .logo {
@@ -96,10 +129,47 @@ const handleLogout = async () => {
   color: #fff;
   text-align: center;
   border-bottom: 1px solid #3d4f65;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.logo-icon {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  font-size: 20px;
+  background-color: #409EFF;
+  border-radius: 8px;
 }
 
 .menu {
   border-right: none;
+  overflow: hidden;
+}
+
+.collapse-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #a0aec0;
+  font-size: 16px;
+  padding: 0;
+  margin: 0;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.collapse-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .header {
@@ -109,6 +179,7 @@ const handleLogout = async () => {
   align-items: center;
   padding: 0 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease;
 }
 
 .title {
@@ -128,5 +199,6 @@ const handleLogout = async () => {
 .main {
   padding: 20px;
   background-color: #f5f5f5;
+  transition: width 0.3s ease;
 }
 </style>

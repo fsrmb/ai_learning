@@ -1,7 +1,9 @@
 export class Constants {
-  //实际IP地址
-  static readonly BASE_URL: string = 'http://192.168.100.100:8080'
-  static readonly TOKEN_KEY: string = 'ai_app_token'
+  //校园网
+  //static readonly BASE_URL: string = 'http://172.19.21.199:8080'
+  //随身热点
+  static readonly BASE_URL: string = 'http://192.168.100.101:8080'
+  static readonly TOKEN_KEY: string = 'app-b3e3vd7rYn1PEThoxkGBB7Kf'
   static readonly USER_ID_KEY: string = 'ai_app_user_id'
   static readonly USERNAME_KEY: string = 'ai_app_username'
   static readonly PASSWORD_KEY: string = 'ai_app_password'

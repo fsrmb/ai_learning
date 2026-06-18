@@ -1,18 +1,9 @@
 import { http } from '@kit.NetworkKit'
 import { TokenUtil } from "../common/TokenUtil"
-/**
- * Dify 平台 API 封装
- * 包含两种调用模式：
- *   1. blocking（阻塞）— 等 AI 全部生成完再返回
- *   2. streaming（流式）— 逐步接收，打字机效果
- *
- * 使用方式：
- *   const api = new DifyApi('app-xxxxxxxxxxxx', 'http://10.0.2.2/v1')
- *   const reply = await api.chatBlocking('你好')          // 阻塞
- *   await api.chatStreaming('你好', (chunk) => { ... })   // 流式
- */
 
-/** Dify 流式事件回调 */
+/**
+ * Dify 流式事件回调接口
+ */
 export interface StreamCallbacks {
   /** 每收到一段文字时回调 */
   onChunk: (text: string) => void
@@ -22,13 +13,16 @@ export interface StreamCallbacks {
   onError: (error: string) => void
 }
 
+/**
+ * Dify 平台 API 封装
+ * 包含两种调用模式：
+ *   1. blocking（阻塞）— 等 AI 全部生成完再返回
+ *   2. streaming（流式）— 逐步接收，打字机效果
+ */
 export class DifyApi {
   private apiKey: string
   private baseUrl: string
 
-
-
-  // 构造器
   constructor(apiKey: string, baseUrl: string) {
     this.apiKey = apiKey
     this.baseUrl = baseUrl
@@ -46,10 +40,10 @@ export class DifyApi {
    */
   async chatBlocking(message: string, conversationId: string = ''): Promise<string> {
     const httpRequest = http.createHttp()
-    const context = getContext()
 
-    console.log(message)
+    console.log('DifyApi chatBlocking:', message)
     try {
+      const username = await TokenUtil.getUsername()
       const response = await httpRequest.request(
         `${this.baseUrl}/chat-messages`,
         {
@@ -59,18 +53,21 @@ export class DifyApi {
             'Authorization': `Bearer ${this.apiKey}`
           },
           extraData: {
-            inputs:{},
-            query: message,
+            // 必须保留 inputs.text 字段，Dify 平台依赖此字段解析消息
+            inputs: {
+              text: message
+            },
+            query:message,
             conversation_id: conversationId,
             response_mode: 'blocking',
-            user: "user-123"
+            user: 'user-' + (username || 'default')
           },
-          connectTimeout: 30000,
-          readTimeout: 60000
+          connectTimeout: 15000,
+          readTimeout: 30000
         }
       )
 
-      console.log(JSON.stringify(response))
+      console.log('DifyApi chatBlocking response:', JSON.stringify(response))
 
       if (response.responseCode !== 200) {
         throw new Error(`HTTP ${response.responseCode}`)
@@ -98,74 +95,131 @@ export class DifyApi {
     conversationId: string = '',
     callbacks: StreamCallbacks
   ): Promise<void> {
+    const username = await TokenUtil.getUsername()
     const httpRequest = http.createHttp()
-    let buffer: string = ''
-    let resolved: boolean = false
 
-    httpRequest.on('dataReceive', (data: ArrayBuffer) => {
-      const chunk = this.arrayBufferToString(data)
-      buffer += chunk
+    console.log('DifyApi chatStreaming sending request...')
 
-      // 按行分割，处理完整的 SSE 事件
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''   // 最后一个可能不完整，留到下次
+    try {
+      const response = await httpRequest.request(
+        `${this.baseUrl}/chat-messages`,
+        {
+          method: http.RequestMethod.POST,
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          extraData: {
+            // 必须保留 inputs.text 字段，Dify 平台依赖此字段解析消息
+            inputs: {
+              text: message
+            },
+            query:message,
+            conversation_id: conversationId,
+            response_mode: 'streaming',
+            user: 'user-' + (username || 'default')
+          },
+          connectTimeout: 30000,
+          readTimeout: 60000
+        }
+      )
 
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
+      console.log('DifyApi chatStreaming response code:', response.responseCode)
 
-        const jsonStr = line.substring(6).trim()
-        if (jsonStr === '[DONE]') continue
+      if (response.responseCode !== 200) {
+        callbacks.onError(`HTTP ${response.responseCode}`)
+        return
+      }
+
+      // 解析 SSE 格式的响应结果
+      const result = response.result as string
+      console.log('DifyApi chatStreaming parsing SSE result...')
+
+      // 解析 SSE 数据
+      this.parseSseResponse(result, callbacks)
+
+    } catch (err) {
+      console.error('DifyApi chatStreaming error:', err)
+      callbacks.onError(String(err))
+    } finally {
+      httpRequest.destroy()
+    }
+  }
+
+  // ========================================
+  // SSE 解析方法
+  // ========================================
+
+  /**
+   * 解析 SSE 格式的响应数据
+   * SSE 格式示例：
+   *   event: ping
+   *   data: {"event":"workflow_started",...}
+   *   data: {"event":"message","answer":"你好",...}
+   *   data: {"event":"message_end",...}
+   */
+  private parseSseResponse(sseData: string, callbacks: StreamCallbacks): void {
+    let fullAnswer: string = ''
+    let conversationId: string = ''
+
+    // 按行分割
+    const lines = sseData.split('\n')
+
+    for (let line of lines) {
+      line = line.trim()
+      if (line === '' || line.startsWith('event:')) continue
+
+      // 处理 data: 行
+      if (line.startsWith('data:')) {
+        const jsonStr = line.substring(5).trim()
+        if (jsonStr === '' || jsonStr === '[DONE]') continue
 
         try {
-          const event = JSON.parse(jsonStr) as Record<string, Object>
-          const eventType = event['event'] as string
+          const obj = JSON.parse(jsonStr) as Record<string, Object>
+          const eventType = obj['event'] as string
 
-          if (eventType === 'message') {
-            // 每收到一段文字，回调通知
-            const answer = event['answer'] as string || ''
-            callbacks.onChunk(answer)
-          } else if (eventType === 'message_end') {
-            // 流式结束，提取 conversation_id
-            const convId = event['conversation_id'] as string || ''
-            callbacks.onComplete(convId)
-            resolved = true
+          // 提取 conversation_id
+          if (obj['conversation_id']) {
+            conversationId = obj['conversation_id'] as string
           }
-        } catch {
-          // 忽略解析失败的行
+
+          // 处理消息事件 - 逐步输出答案
+          if (eventType === 'message') {
+            const answer = obj['answer'] as string || ''
+            if (answer) {
+              console.log('DifyApi parseSseResponse onChunk:', answer)
+              fullAnswer += answer
+              callbacks.onChunk(answer)
+            }
+          }
+          // 处理消息结束事件
+          else if (eventType === 'message_end') {
+            console.log('DifyApi parseSseResponse message_end, fullAnswer:', fullAnswer)
+            callbacks.onComplete(conversationId)
+            return
+          }
+        } catch (e) {
+          console.warn('DifyApi parseSseResponse JSON parse error:', e)
         }
       }
-    })
+    }
 
-    httpRequest.on('dataEnd', () => {
-      if (!resolved) {
-        callbacks.onComplete('')
-      }
-    })
-
-    // 发起请求（错误通过 .catch 处理，http 模块没有 'error' 事件）
-    httpRequest.request(`${this.baseUrl}/chat-messages`, {
-      method: http.RequestMethod.POST,
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
-      },
-      extraData: JSON.stringify({
-        query: message,
-        conversation_id: conversationId,
-        response_mode: 'streaming',
-        user: 'student-001'
-      }),
-      connectTimeout: 30000,
-      readTimeout: 120000
-    }).catch((err: object) => {
-      callbacks.onError(String(err))
-    })
+    // 如果没有收到 message_end 事件，但有累积的答案，也触发完成
+    if (fullAnswer) {
+      console.log('DifyApi parseSseResponse no message_end, but has answer:', fullAnswer)
+      callbacks.onComplete(conversationId)
+    } else {
+      callbacks.onError('未收到有效回复')
+    }
   }
 
   // ========================================
   // 工具方法
   // ========================================
 
+  /**
+   * ArrayBuffer 转字符串
+   */
   private arrayBufferToString(buffer: ArrayBuffer): string {
     const uint8Array = new Uint8Array(buffer)
     let result = ''
