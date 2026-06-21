@@ -104,17 +104,20 @@ export class DifyChatViewModel {
   private async sendBlocking(content: string): Promise<void> {
     const result: ChatResult = await this.difyApi.chatBlocking(content, this.conversationId)
 
-    // 更新会话 ID
-    if (result.conversationId) {
-      this.conversationId = result.conversationId
-    }
-
     const aiMsg: ChatMessage = {
       role: 'assistant',
       content: result.answer,
       timestamp: Date.now()
     }
     this.messages.push(aiMsg)
+
+    // 更新会话 ID
+    if (result.conversationId) {
+      this.conversationId = result.conversationId
+      // 如果之前有临时 ID 的记录，更新为真实 ID
+      await this.updateConversationId(result.conversationId)
+    }
+
     await this.saveToHistory(content, result.answer)
   }
 
@@ -129,19 +132,26 @@ export class DifyChatViewModel {
       onChunk: (text: string) => {
         console.log('DifyChatViewModel onChunk:', text)
         this.streamingContent += text
+        console.log('DifyChatViewModel streamingContent length:', this.streamingContent.length)
       },
-      onComplete: (convId: string) => {
+      onComplete: async (convId: string) => {
         console.log('DifyChatViewModel onComplete, convId:', convId)
+        console.log('DifyChatViewModel onComplete, streamingContent:', this.streamingContent)
+        
         if (convId) {
           this.conversationId = convId
+          await this.updateConversationId(convId)
         }
+        
         const aiMsg: ChatMessage = {
           role: 'assistant',
           content: this.streamingContent,
           timestamp: Date.now()
         }
         this.messages.push(aiMsg)
-        this.saveToHistory(content, this.streamingContent)
+        console.log('DifyChatViewModel onComplete, messages count:', this.messages.length)
+        
+        await this.saveToHistory(content, this.streamingContent)
       },
       onError: (error: string) => {
         console.error('DifyChatViewModel onError:', error)
@@ -194,12 +204,35 @@ export class DifyChatViewModel {
     this.conversationId = record.conversationId
     this.currentTitle = record.title
 
-    const welcomeMsg: ChatMessage = {
-      role: 'assistant',
-      content: `欢迎回来！继续"${record.title}"的对话`,
-      timestamp: Date.now()
+    // 优先从本地存储加载消息
+    if (record.messages && record.messages.length > 0) {
+      try {
+        const savedMessages = JSON.parse(record.messages) as ChatMessage[]
+        this.messages = savedMessages
+        console.log('DifyChatViewModel switchConversation: loaded from local storage, messages:', savedMessages.length)
+      } catch (err) {
+        console.error('DifyChatViewModel switchConversation: failed to parse saved messages:', err)
+      }
     }
-    this.messages.push(welcomeMsg)
+
+    // 如果本地没有消息，从 Dify 加载历史消息
+    if (this.messages.length === 0) {
+      const historyMessages = await this.difyApi.getConversationMessages(record.conversationId)
+
+      if (historyMessages.length > 0) {
+        this.messages = historyMessages
+        // 保存到本地存储
+        await this.saveMessagesToStorage(record.conversationId, historyMessages)
+      } else {
+        // 如果 Dify 没有返回历史消息，显示欢迎提示
+        const welcomeMsg: ChatMessage = {
+          role: 'assistant',
+          content: `欢迎回来！继续"${record.title}"的对话`,
+          timestamp: Date.now()
+        }
+        this.messages.push(welcomeMsg)
+      }
+    }
 
     // 更新历史记录的时间戳（标记为最新）
     await this.historyManager.updateLastMessage(
@@ -230,36 +263,112 @@ export class DifyChatViewModel {
   // ========================================
 
   /**
-   * 保存会话到历史记录
+   * 将临时会话 ID 更新为 Dify 返回的真实 ID
    */
-  private async saveToHistory(userMessage: string, aiReply: string): Promise<void> {
+  private async updateConversationId(realConversationId: string): Promise<void> {
+    // 查找是否有以 temp- 开头的记录
+    const allConversations = await this.historyManager.getAllConversations()
+    const tempRecord = allConversations.find(c => c.conversationId.startsWith('temp-'))
+
+    if (tempRecord) {
+      // 删除临时记录
+      await this.historyManager.deleteConversation(tempRecord.conversationId)
+
+      // 创建真实 ID 的记录，保留消息
+      const newRecord = new ConversationRecord(
+        realConversationId,
+        tempRecord.title,
+        tempRecord.lastMessage,
+        tempRecord.timestamp,
+        tempRecord.messageCount,
+        tempRecord.messages
+      )
+      await this.historyManager.addOrUpdate(newRecord)
+    }
+  }
+
+  /**
+   * 保存会话到历史记录
+   * @param userMessage 用户消息
+   * @param aiReply AI 回复
+   * @param realConversationId Dify 返回的真实会话 ID（可选）
+   */
+  private async saveToHistory(
+    userMessage: string,
+    aiReply: string,
+    realConversationId?: string
+  ): Promise<void> {
     const now = Date.now()
 
     // 生成标题（取用户消息的前 20 个字符）
     const title = userMessage.length > 20 ? userMessage.substring(0, 20) + '...' : userMessage
 
-    if (!this.conversationId) {
-      // 新会话，创建记录
+    // 确定要使用的会话 ID
+    const targetConversationId = realConversationId || this.conversationId
+    const isNewConversation = !targetConversationId
+
+    // 保存当前消息到存储
+    await this.saveMessagesToStorage(targetConversationId || 'temp-' + now, this.messages)
+
+    if (isNewConversation) {
+      // 新会话，创建记录（使用临时 ID，后续会更新）
+      const tempId = 'temp-' + now
       const record = new ConversationRecord(
-        'temp-' + now,
+        tempId,
         title,
         aiReply.substring(0, 50) + (aiReply.length > 50 ? '...' : ''),
         now,
-        this.messages.length
+        this.messages.length,
+        JSON.stringify(this.messages)
       )
       await this.historyManager.addOrUpdate(record)
       this.currentTitle = title
     } else {
       // 已有会话，更新记录
-      const record = await this.historyManager.getConversation(this.conversationId)
+      const record = await this.historyManager.getConversation(targetConversationId)
       if (record) {
         record.lastMessage = aiReply.substring(0, 50) + (aiReply.length > 50 ? '...' : '')
         record.timestamp = now
         record.messageCount = this.messages.length
+        record.messages = JSON.stringify(this.messages)
         await this.historyManager.addOrUpdate(record)
       }
     }
 
     await this.loadAllHistory()
+  }
+
+  /**
+   * 保存消息到本地存储
+   * @param conversationId 会话 ID
+   * @param messages 消息列表
+   */
+  private async saveMessagesToStorage(conversationId: string, messages: ChatMessage[]): Promise<void> {
+    try {
+      const record = await this.historyManager.getConversation(conversationId)
+      if (record) {
+        record.messages = JSON.stringify(messages)
+        await this.historyManager.addOrUpdate(record)
+      } else {
+        // 如果记录不存在，创建新记录
+        const title = messages.length > 0 && messages[0].role === 'user'
+          ? (messages[0].content.length > 20 ? messages[0].content.substring(0, 20) + '...' : messages[0].content)
+          : '新对话'
+        const lastMessage = messages.length > 0
+          ? (messages[messages.length - 1].content.substring(0, 50) + (messages[messages.length - 1].content.length > 50 ? '...' : ''))
+          : ''
+        const newRecord = new ConversationRecord(
+          conversationId,
+          title,
+          lastMessage,
+          Date.now(),
+          messages.length,
+          JSON.stringify(messages)
+        )
+        await this.historyManager.addOrUpdate(newRecord)
+      }
+    } catch (err) {
+      console.error('DifyChatViewModel saveMessagesToStorage failed:', err)
+    }
   }
 }

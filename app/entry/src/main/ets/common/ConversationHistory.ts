@@ -10,19 +10,23 @@ export class ConversationRecord {
   lastMessage: string = ''
   timestamp: number = 0
   messageCount: number = 0
+  // 新增：保存完整的消息列表（JSON 字符串）
+  messages: string = ''
 
   constructor(
     conversationId: string = '',
     title: string = '',
     lastMessage: string = '',
     timestamp: number = 0,
-    messageCount: number = 0
+    messageCount: number = 0,
+    messages: string = ''
   ) {
     this.conversationId = conversationId
     this.title = title
     this.lastMessage = lastMessage
     this.timestamp = timestamp
     this.messageCount = messageCount
+    this.messages = messages
   }
 }
 
