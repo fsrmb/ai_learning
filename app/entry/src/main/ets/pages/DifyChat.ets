@@ -6,7 +6,7 @@ import { MarkdownUtil } from '../common/MarkdownUtil'
 import { webview } from '@kit.ArkWeb'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { ConversationRecord } from '../common/ConversationHistory'
-import { getContext } from '@kit.AbilityKit'
+import GlobalContext from '../common/GlobalContext'
 
 /**
  * Dify 聊天页面
@@ -37,7 +37,10 @@ struct DifyChatPage {
    * 页面显示时初始化历史记录
    */
   onPageShow(): void {
-    this.viewModel.initHistory(getContext())
+    const context = GlobalContext.getInstance().getContext()
+    if (context) {
+      this.viewModel.initHistory(context)
+    }
   }
 
   /**
@@ -165,7 +168,7 @@ struct DifyChatPage {
                   Row() {
                     Column() {
                       Web({
-                        src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtml(msg.content))}`,
+                        src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(msg.content))}`,
                         controller: new webview.WebviewController(),
                         renderMode: RenderMode.SYNC_RENDER
                       })
@@ -196,7 +199,7 @@ struct DifyChatPage {
                 Row() {
                   Column() {
                     Web({
-                      src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtml(this.viewModel.streamingContent))}`,
+                      src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(this.viewModel.streamingContent))}`,
                       controller: new webview.WebviewController(),
                       renderMode: RenderMode.SYNC_RENDER
                     })
@@ -279,11 +282,11 @@ struct DifyChatPage {
       HistoryPanel({
         visible: this.showHistory,
         history: this.viewModel.history,
-        currentConversationId: this.viewModel.conversationId
+        currentConversationId: this.viewModel.conversationId,
+        onClose: () => this.closeHistory(),
+        onSelect: (record: ConversationRecord) => this.selectConversation(record),
+        onDelete: (record: ConversationRecord) => this.deleteConversation(record)
       })
-        .onClose(() => this.closeHistory())
-        .onSelect((record) => this.selectConversation(record))
-        .onDelete((record) => this.deleteConversation(record))
     }
     .width('100%')
     .height('100%')

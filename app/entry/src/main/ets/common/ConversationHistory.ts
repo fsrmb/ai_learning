@@ -1,4 +1,4 @@
-import { preferences } from '@ohos.data.preferences'
+import preferences from '@ohos.data.preferences'
 import { Context } from '@kit.AbilityKit'
 
 /**

@@ -14,6 +14,53 @@ export interface StreamCallbacks {
 }
 
 /**
+ * 阻塞模式返回结果
+ */
+export class ChatResult {
+  answer: string = ''
+  conversationId: string = ''
+  constructor(answer: string, conversationId: string) {
+    this.answer = answer
+    this.conversationId = conversationId
+  }
+}
+
+/**
+ * 输入参数类
+ */
+class InputsData {
+  text: string = ''
+  constructor(text: string) {
+    this.text = text
+  }
+}
+
+/**
+ * 聊天请求参数类
+ */
+class ChatRequestBody {
+  inputs: InputsData = new InputsData('')
+  query: string = ''
+  conversation_id: string = ''
+  response_mode: string = ''
+  user: string = ''
+
+  constructor(
+    text: string,
+    query: string,
+    conversationId: string,
+    responseMode: string,
+    user: string
+  ) {
+    this.inputs = new InputsData(text)
+    this.query = query
+    this.conversation_id = conversationId
+    this.response_mode = responseMode
+    this.user = user
+  }
+}
+
+/**
  * Dify 平台 API 封装
  * 包含两种调用模式：
  *   1. blocking（阻塞）— 等 AI 全部生成完再返回
@@ -36,14 +83,23 @@ export class DifyApi {
    * 阻塞式对话 — 等待 AI 完整生成后一次性返回
    * @param message 用户消息
    * @param conversationId 会话 ID，空字符串表示新会话
-   * @returns AI 回复文本
+   * @returns AI 回复文本和会话 ID
    */
-  async chatBlocking(message: string, conversationId: string = ''): Promise<string> {
+  async chatBlocking(message: string, conversationId: string = ''): Promise<ChatResult> {
     const httpRequest = http.createHttp()
 
     console.log('DifyApi chatBlocking:', message)
     try {
       const username = await TokenUtil.getUsername()
+
+      const requestBody = new ChatRequestBody(
+        message,
+        message,
+        conversationId,
+        'blocking',
+        'user-' + (username || 'default')
+      )
+
       const response = await httpRequest.request(
         `${this.baseUrl}/chat-messages`,
         {
@@ -52,16 +108,7 @@ export class DifyApi {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
           },
-          extraData: {
-            // 必须保留 inputs.text 字段，Dify 平台依赖此字段解析消息
-            inputs: {
-              text: message
-            },
-            query:message,
-            conversation_id: conversationId,
-            response_mode: 'blocking',
-            user: 'user-' + (username || 'default')
-          },
+          extraData: requestBody,
           connectTimeout: 15000,
           readTimeout: 30000
         }
@@ -74,7 +121,9 @@ export class DifyApi {
       }
 
       const result = JSON.parse(response.result as string) as Record<string, Object>
-      return (result['answer'] as string) || '未收到回复'
+      const answer = (result['answer'] as string) || '未收到回复'
+      const convId = (result['conversation_id'] as string) || ''
+      return new ChatResult(answer, convId)
     } finally {
       httpRequest.destroy()
     }
@@ -101,6 +150,14 @@ export class DifyApi {
     console.log('DifyApi chatStreaming sending request...')
 
     try {
+      const requestBody = new ChatRequestBody(
+        message,
+        message,
+        conversationId,
+        'streaming',
+        'user-' + (username || 'default')
+      )
+
       const response = await httpRequest.request(
         `${this.baseUrl}/chat-messages`,
         {
@@ -109,16 +166,7 @@ export class DifyApi {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
           },
-          extraData: {
-            // 必须保留 inputs.text 字段，Dify 平台依赖此字段解析消息
-            inputs: {
-              text: message
-            },
-            query:message,
-            conversation_id: conversationId,
-            response_mode: 'streaming',
-            user: 'user-' + (username || 'default')
-          },
+          extraData: requestBody,
           connectTimeout: 30000,
           readTimeout: 60000
         }

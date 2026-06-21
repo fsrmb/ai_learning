@@ -72,14 +72,14 @@ export struct HistoryPanel {
                 ListItem() {
                   ConversationItem({
                     record: item,
-                    isActive: item.conversationId === this.currentConversationId
-                  })
-                    .onTap(() => {
+                    isActive: item.conversationId === this.currentConversationId,
+                    onTap: () => {
                       this.onSelect(item)
-                    })
-                    .onDelete(() => {
+                    },
+                    onDelete: () => {
                       this.onDelete(item)
-                    })
+                    }
+                  })
                 }
                 .margin({ left: 12, right: 12, top: 8 })
               }, (item: ConversationRecord) => item.conversationId)

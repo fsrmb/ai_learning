@@ -1,5 +1,5 @@
 import { ChatMessage } from '../model/ChatMessage'
-import { DifyApi, StreamCallbacks } from '../http/DifyApi'
+import { DifyApi, StreamCallbacks, ChatResult } from '../http/DifyApi'
 import { Constants } from '../common/Constants'
 import { ConversationHistory, ConversationRecord } from '../common/ConversationHistory'
 import { Context } from '@kit.AbilityKit'
@@ -40,7 +40,7 @@ export class DifyChatViewModel {
   constructor() {
     this.difyApi = new DifyApi(
       'app-b3e3vd7rYn1PEThoxkGBB7Kf',
-      'http://192.168.100.101/v1'
+      'http://172.19.22.89/v1'
     )
     this.historyManager = ConversationHistory.getInstance()
   }
@@ -102,15 +102,20 @@ export class DifyChatViewModel {
   // ========================================
 
   private async sendBlocking(content: string): Promise<void> {
-    const reply = await this.difyApi.chatBlocking(content, this.conversationId)
+    const result: ChatResult = await this.difyApi.chatBlocking(content, this.conversationId)
+
+    // 更新会话 ID
+    if (result.conversationId) {
+      this.conversationId = result.conversationId
+    }
 
     const aiMsg: ChatMessage = {
       role: 'assistant',
-      content: reply,
+      content: result.answer,
       timestamp: Date.now()
     }
     this.messages.push(aiMsg)
-    await this.saveToHistory(content, reply)
+    await this.saveToHistory(content, result.answer)
   }
 
   // ========================================
