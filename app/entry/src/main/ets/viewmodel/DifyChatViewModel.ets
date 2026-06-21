@@ -93,7 +93,8 @@ export class DifyChatViewModel {
       this.messages.push(errMsg)
     } finally {
       this.sending = false
-      this.streamingContent = ''
+      // 注意：不要在这里清空 streamingContent，因为 onComplete 回调是异步的
+      // streamingContent 会在每次发送新消息时清空
     }
   }
 
