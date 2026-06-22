@@ -112,22 +112,53 @@
     </div>
   </div>
 </template>
-
 <script setup>
+/**
+ * 登录页面组件
+ * 提供用户登录功能，包括表单验证、登录请求、错误处理
+ */
+
+// Vue 核心响应式 API
 import { ref, reactive } from 'vue'
+
+// Vue Router 路由跳转
 import { useRouter } from 'vue-router'
+
+// Element Plus 组件和消息提示
 import { ElMessage, ElForm, ElFormItem, ElInput, ElCheckbox, ElButton } from 'element-plus'
 
+// Pinia 用户状态管理 Store
+import { useUserStore } from '../stores/user'
+
+/** 路由实例，用于登录成功后跳转 */
 const router = useRouter()
+
+/** 用户状态管理实例，提供登录方法 */
+const userStore = useUserStore()
+
+/** 表单引用，用于表单验证 */
 const loginFormRef = ref(null)
+
+/** 登录按钮加载状态 */
 const loading = ref(false)
 
+/**
+ * 登录表单数据
+ * @property {string} username - 用户名
+ * @property {string} password - 密码
+ * @property {boolean} rememberMe - 是否记住密码
+ */
 const form = reactive({
   username: '',
   password: '',
   rememberMe: false
 })
 
+/**
+ * 表单验证规则
+ * - username: 必填，长度 3-20 字符
+ * - password: 必填，长度 6-30 字符
+ */
 const rules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -139,26 +170,37 @@ const rules = {
   ]
 }
 
+/**
+ * 处理登录请求
+ * @returns {Promise<void>}
+ * @description 先进行表单验证，验证通过后调用 userStore.login() 进行登录，
+ *              登录成功后跳转到首页，失败则显示错误提示
+ */
 const handleLogin = async () => {
+  // 校验表单引用是否存在
   if (!loginFormRef.value) return
   
+  // 执行表单验证
   await loginFormRef.value.validate(async (valid) => {
+    // 验证通过
     if (valid) {
+      // 设置加载状态
       loading.value = true
+      
       try {
-        // 模拟登录请求
-        await new Promise(resolve => setTimeout(resolve, 800))
+        // 调用 Pinia store 的登录方法
+        await userStore.login(form)
         
-        if (form.username === 'admin' && form.password === '123456') {
-          localStorage.setItem('token', 'mock-token-123456')
-          ElMessage.success('登录成功')
-          router.push('/home')
-        } else {
-          ElMessage.error('用户名或密码错误')
-        }
+        // 登录成功，显示成功提示并跳转到首页
+        ElMessage.success('登录成功')
+        router.push('/home')
+        
       } catch (error) {
+        // 登录失败，显示错误提示
         ElMessage.error('登录失败，请重试')
+        
       } finally {
+        // 无论成功或失败，都重置加载状态
         loading.value = false
       }
     }

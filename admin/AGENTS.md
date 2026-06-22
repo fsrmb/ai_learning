@@ -39,7 +39,8 @@ admin/src/
 - 禁止使用 any 类型（即使是 JS 也要注意类型安全）
 - 禁止修改 request.js 的拦截器逻辑（除非有充分理由）
 - 所有 API 函数返回 Promise，组件中用 async/await 调用
-
+- 所有 API 函数的参数和返回值都要有类型注释（除非是动态类型）
+- 所有函数都要注释完备，包括参数、返回值、异常类型等
 ## 参考文件
 - 登录页：views/Login.vue
 - 布局组件：layout/MainLayout.vue

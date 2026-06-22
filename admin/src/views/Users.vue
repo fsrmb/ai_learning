@@ -109,92 +109,79 @@
 </template>
 
 <script setup>
+/**
+ * 用户管理页面组件
+ * 提供用户列表展示、搜索、分页、新增、编辑、删除等功能
+ */
+
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../utils/request'
+import { getUserList } from '../api/user'
 
+// ---- 搜索表单 ----
+/** 搜索表单数据 */
 const searchForm = reactive({
   keyword: '',
   role: ''
 })
 
+// ---- 分页配置 ----
+/** 分页参数 */
 const pagination = reactive({
   page: 1,
   size: 10,
   total: 0
 })
 
+// ---- 数据状态 ----
+/** 当前页用户列表 */
 const userList = ref([])
-const allUsers = ref([])
+/** 加载状态 */
 const loading = ref(false)
 
+// ---- 角色映射 ----
+/** 角色值到标签的映射 */
 const roleMap = {
   admin: '管理员',
   user: '普通用户',
   guest: '访客'
 }
 
+/**
+ * 获取角色标签文本
+ * @param {string} role - 角色值
+ * @returns {string} 角色标签文本
+ */
 const getRoleLabel = (role) => {
   return roleMap[role] || role
 }
 
-const mockUsers = () => {
-  const roles = ['admin', 'user', 'guest']
-  const users = []
-  for (let i = 1; i <= 100; i++) {
-    const role = roles[Math.floor(Math.random() * roles.length)]
-    users.push({
-      id: i,
-      username: `user${i}`,
-      nickname: `用户${i}`,
-      email: `user${i}@example.com`,
-      role: role,
-      status: Math.random() > 0.15 ? 1 : 0,
-      createTime: `2024-01-${String(Math.floor(Math.random() * 30) + 1).padStart(2, '0')} 10:30:00`
-    })
-  }
-  return users
-}
-
-const filterUsers = () => {
-  let filtered = [...allUsers.value]
-  
-  // 关键词过滤
-  if (searchForm.keyword) {
-    const keyword = searchForm.keyword.toLowerCase()
-    filtered = filtered.filter(user => 
-      user.username.toLowerCase().includes(keyword) ||
-      user.nickname.toLowerCase().includes(keyword) ||
-      user.email.toLowerCase().includes(keyword)
-    )
-  }
-  
-  // 角色过滤
-  if (searchForm.role) {
-    filtered = filtered.filter(user => user.role === searchForm.role)
-  }
-  
-  return filtered
-}
-
+/**
+ * 加载用户列表
+ * @returns {Promise<void>}
+ * @description 调用 getUserList API 获取用户数据，支持分页和搜索
+ */
 const loadUsers = async () => {
   loading.value = true
   try {
-    // 首次加载时生成所有数据
-    if (allUsers.value.length === 0) {
-      allUsers.value = mockUsers()
+    // 构建查询参数
+    const params = {
+      page: pagination.page,
+      size: pagination.size,
+      keyword: searchForm.keyword,
+      role: searchForm.role
     }
     
-    // 根据搜索条件过滤数据
-    const filtered = filterUsers()
+    // 调用 API 获取用户列表
+    const result = await getUserList(params)
     
-    // 分页处理
-    const start = (pagination.page - 1) * pagination.size
-    const end = start + pagination.size
-    userList.value = filtered.slice(start, end)
-    pagination.total = filtered.length
+    // 更新用户列表和分页信息
+    userList.value = result.list || result.data || []
+    pagination.total = result.total || 0
+    
   } catch (error) {
     console.error('获取用户列表失败:', error)
+    ElMessage.error('获取用户列表失败')
     userList.value = []
     pagination.total = 0
   } finally {
@@ -202,11 +189,19 @@ const loadUsers = async () => {
   }
 }
 
+/**
+ * 处理搜索操作
+ * @description 重置页码并重新加载用户列表
+ */
 const handleSearch = () => {
   pagination.page = 1
   loadUsers()
 }
 
+/**
+ * 处理重置操作
+ * @description 清空搜索条件并重新加载用户列表
+ */
 const handleReset = () => {
   searchForm.keyword = ''
   searchForm.role = ''
@@ -214,19 +209,34 @@ const handleReset = () => {
   loadUsers()
 }
 
+/**
+ * 处理页码变化
+ * @param {number} page - 新页码
+ */
 const handlePageChange = (page) => {
   pagination.page = page
   loadUsers()
 }
 
+/**
+ * 处理每页数量变化
+ * @param {number} size - 新每页数量
+ */
 const handleSizeChange = (size) => {
   pagination.size = size
   pagination.page = 1
   loadUsers()
 }
 
+// ---- 对话框相关 ----
+/** 对话框显示状态 */
 const dialogVisible = ref(false)
+/** 对话框标题 */
 const dialogTitle = ref('新增用户')
+/** 用户表单引用 */
+const userFormRef = ref(null)
+
+/** 用户表单数据 */
 const userForm = reactive({
   id: null,
   username: '',
@@ -236,6 +246,7 @@ const userForm = reactive({
   status: 1
 })
 
+/** 用户表单验证规则 */
 const userFormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -253,14 +264,21 @@ const userFormRules = {
   ]
 }
 
-const userFormRef = ref(null)
-
+/**
+ * 处理新增用户操作
+ * @description 打开新增用户对话框
+ */
 const handleAdd = () => {
   dialogTitle.value = '新增用户'
   resetUserForm()
   dialogVisible.value = true
 }
 
+/**
+ * 处理编辑用户操作
+ * @param {Object} row - 用户行数据
+ * @description 打开编辑用户对话框，填充用户信息
+ */
 const handleEdit = (row) => {
   dialogTitle.value = '编辑用户'
   Object.assign(userForm, {
@@ -274,6 +292,10 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
+/**
+ * 重置用户表单
+ * @description 清空表单数据和验证状态
+ */
 const resetUserForm = () => {
   userForm.id = null
   userForm.username = ''
@@ -286,10 +308,19 @@ const resetUserForm = () => {
   }
 }
 
+/**
+ * 对话框关闭事件
+ * @description 重置表单
+ */
 const handleDialogClose = () => {
   resetUserForm()
 }
 
+/**
+ * 处理表单提交
+ * @returns {Promise<void>}
+ * @description 验证表单后提交新增或编辑请求
+ */
 const handleSubmit = async () => {
   if (!userFormRef.value) return
   
@@ -297,7 +328,7 @@ const handleSubmit = async () => {
     if (valid) {
       try {
         if (userForm.id) {
-          // 编辑用户 - 本地更新
+          // 编辑用户 - 本地更新（TODO: 调用更新 API）
           const index = userList.value.findIndex(u => u.id === userForm.id)
           if (index !== -1) {
             userList.value[index] = {
@@ -311,7 +342,7 @@ const handleSubmit = async () => {
           }
           ElMessage.success('编辑成功')
         } else {
-          // 新增用户
+          // 新增用户 - 本地更新（TODO: 调用新增 API）
           const newUser = {
             ...userForm,
             id: Date.now(),
@@ -330,6 +361,12 @@ const handleSubmit = async () => {
   })
 }
 
+/**
+ * 处理删除用户操作
+ * @param {Object} row - 用户行数据
+ * @returns {Promise<void>}
+ * @description 弹出确认对话框后删除用户
+ */
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
@@ -342,18 +379,20 @@ const handleDelete = async (row) => {
       }
     )
     
-    // 本地删除 - 从 allUsers 中删除
-    const index = allUsers.value.findIndex(u => u.id === row.id)
+    // 本地删除 - 从列表中删除（TODO: 调用删除 API）
+    const index = userList.value.findIndex(u => u.id === row.id)
     if (index !== -1) {
-      allUsers.value.splice(index, 1)
+      userList.value.splice(index, 1)
+      pagination.total -= 1
       ElMessage.success('删除成功')
-      loadUsers()
     }
   } catch (error) {
     // 用户点击取消，不显示消息
   }
 }
 
+// ---- 生命周期 ----
+/** 组件挂载时加载用户列表 */
 onMounted(() => {
   loadUsers()
 })
