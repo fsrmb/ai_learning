@@ -63,8 +63,8 @@ export class MarkdownUtil {
     //    必须最后处理，避免干扰上面的多行正则
     html = html.replace(/\n/g, '<br>')
 
-    // ⑨ 包裹基础样式（字体大小调整为 32px）
-    return '<div style="font-size:32px;line-height:1.4;color:#333;word-break:break-all;">' +
+    // ⑨ 包裹基础样式（字体大小调整为 16px，与用户消息一致）
+    return '<div style="font-size:16px;line-height:1.6;color:#333;word-break:break-all;">' +
       html + '</div>'
   }
   static toHtmlWithCustomStyle(markdown: string): string {
@@ -80,8 +80,8 @@ export class MarkdownUtil {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body {
-          font-size: 10px;        /* 调整字体大小 */
-          line-height: 1.2;       /* 行高 */
+          font-size: 16px;        /* 调整字体大小，与用户消息一致 */
+          line-height: 1.6;       /* 行高 */
           color: #333;
           margin: 0;
           padding: 4px 0;
