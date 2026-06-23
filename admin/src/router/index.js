@@ -31,7 +31,7 @@ const routes = [
       {
         path: '/home',
         name: 'Home',
-        component: () => import('../views/Home.vue'),
+        component: () => import('../views/dashboard.vue'),
         meta: { title: '首页' }
       },
       {
@@ -49,7 +49,7 @@ const routes = [
       {
         path: '/skilltree',
         name: 'SkillTree',
-        component: () => import('../views/SkillTree.vue'),
+        component: () => import('../views/tree.vue'),
         meta: { title: '技能树' }
       }
     ]

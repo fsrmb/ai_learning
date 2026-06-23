@@ -4,6 +4,10 @@ export function getSkillTree() {
   return request.get('/api/skills/tree')
 }
 
+export function getSkillTreeByCategory(category) {
+  return request.get('/api/skills/tree', { params: { category } })
+}
+
 export function createSkill(data) {
   return request.post('/api/skills', data)
 }
