@@ -80,8 +80,8 @@ export class MarkdownUtil {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body {
-          font-size: 16px;        /* 调整字体大小 */
-          line-height: 1.4;       /* 行高 */
+          font-size: 10px;        /* 调整字体大小 */
+          line-height: 1.2;       /* 行高 */
           color: #333;
           margin: 0;
           padding: 4px 0;

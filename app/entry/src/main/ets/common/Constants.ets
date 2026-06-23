@@ -1,8 +1,9 @@
 export class Constants {
-  //校园网
-  //static readonly BASE_URL: string = 'http://172.19.21.199:8080'
-  //随身热点
-  static readonly BASE_URL: string = 'http://172.19.22.89:8080'
+  static readonly MY_IP: string ='172.19.18.216'
+  static readonly BASE_URL: string = `http://${Constants.MY_IP}:8080`;
+  static readonly DIFYCHAT_URL: string = `http://${Constants.MY_IP}/v1`;
+  //static readonly BASE_URL: string = 'http://172.19.18.216:8080'
+  //static readonly LINK_URL: string =
   static readonly TOKEN_KEY: string = 'app-b3e3vd7rYn1PEThoxkGBB7Kf'
   static readonly USER_ID_KEY: string = 'ai_app_user_id'
   static readonly USERNAME_KEY: string = 'ai_app_username'

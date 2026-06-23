@@ -39,8 +39,8 @@ export class DifyChatViewModel {
 
   constructor() {
     this.difyApi = new DifyApi(
-      'app-b3e3vd7rYn1PEThoxkGBB7Kf',
-      'http://172.19.22.89/v1'
+      Constants.TOKEN_KEY,
+      Constants.DIFYCHAT_URL
     )
     this.historyManager = ConversationHistory.getInstance()
   }

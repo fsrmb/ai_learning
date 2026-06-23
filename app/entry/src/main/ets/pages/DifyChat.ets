@@ -1,4 +1,5 @@
 import { router } from '@kit.ArkUI'
+import promptAction from '@ohos.promptAction'
 import { DifyChatViewModel } from '../viewmodel/DifyChatViewModel'
 import { ChatMessage } from '../model/ChatMessage'
 import { DateUtil } from '../common/DateUtil'
@@ -19,7 +20,7 @@ import GlobalContext from '../common/GlobalContext'
  *   - blocking / streaming 两种模式切换
  *   - 多轮对话（conversation_id 自动传递）
  *   - 流式打字机效果
- *   - 对话历史面板（持久化存储）
+ *   - 对话历史面板（持久化存储，带滑出动画）
  *   - 新建对话 / 清空消息
  *   - 会话切换
  *
@@ -31,6 +32,8 @@ struct DifyChatPage {
   @State viewModel: DifyChatViewModel = new DifyChatViewModel()
   @State inputText: string = ''
   @State showHistory: boolean = false
+  @State mainContentOffset: number = 0
+  @State historyPanelOffset: number = -100
   private scroller: Scroller = new Scroller()
 
   /**
@@ -44,10 +47,44 @@ struct DifyChatPage {
   }
 
   /**
-   * 关闭历史面板
+   * 打开历史面板（带平移动画）
+   * 主内容向右平移 75%，历史面板从左侧滑入
+   */
+  openHistory(): void {
+    animateTo({
+      duration: 300, // 动画时长 300ms
+      curve: Curve.EaseOut, // 缓动曲线
+      iterations: 1,
+      playMode: PlayMode.Normal
+    }, () => {
+      this.showHistory = true
+      // 主内容向右平移 75% 屏幕宽度
+      this.mainContentOffset = 75
+      // 历史面板从屏幕外左侧滑入到 0% 位置（即完全展开）
+      this.historyPanelOffset = 0
+    })
+  }
+
+  /**
+   * 关闭历史面板（带平移动画）
+   * 主内容向左平移恢复，历史面板向左滑出
    */
   closeHistory(): void {
-    this.showHistory = false
+    animateTo({
+      duration: 300,
+      curve: Curve.EaseOut,
+      iterations: 1,
+      playMode: PlayMode.Normal
+    }, () => {
+      // 主内容向左平移恢复原位
+      this.mainContentOffset = 0
+      // 历史面板向左滑出屏幕
+      this.historyPanelOffset = -100
+    })
+    // 等待动画结束后才隐藏遮罩
+    setTimeout(() => {
+      this.showHistory = false
+    }, 300)
   }
 
   /**
@@ -55,7 +92,7 @@ struct DifyChatPage {
    */
   async selectConversation(record: ConversationRecord): Promise<void> {
     await this.viewModel.switchConversation(record)
-    this.showHistory = false
+    this.closeHistory()
   }
 
   /**
@@ -65,52 +102,105 @@ struct DifyChatPage {
     await this.viewModel.deleteConversation(record)
   }
 
+  /**
+   * 显示删除确认对话框
+   */
+  showDeleteConfirm(record: ConversationRecord): void {
+    promptAction.showDialog({
+      title: '删除确认',
+      message: '确定要删除这条对话记录吗？',
+      buttons: [
+        {
+          text: '取消',
+          color: '#666666'
+        },
+        {
+          text: '删除',
+          color: '#F56C6C'
+        }
+      ]
+    }).then((result: promptAction.ShowDialogSuccessResponse) => {
+      if (result.index === 1) {
+        this.deleteConversation(record)
+      }
+    }).catch((error: Error) => {
+      console.error('showDialog error:', error)
+    })
+  }
+
   build() {
-    Stack({ alignContent: Alignment.TopEnd }) {
+    Row() {
+      // ===== 主内容区域（聊天界面）=====
       Column() {
         // ===== Header =====
         Row() {
-          Text('<')
-            .fontSize(20)
-            .fontColor('#409EFF')
-            .margin({ right: 12 })
-            .onClick(() => router.back())
-          Text('AI对话（Dify）')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
+          // 左侧：返回按钮 + 汉堡菜单
+          Row() {
+            // 返回按钮
+            Text('←')
+              .fontSize(20)
+              .fontColor('#409EFF')
+              .margin({ right: 12 })
+              .onClick(() => router.back())
+
+            // 汉堡菜单（打开/关闭历史）
+            Text('≡')
+              .fontSize(24)
+              .fontColor('#333')
+              .onClick(() => {
+                if (this.showHistory) {
+                  this.closeHistory()
+                } else {
+                  this.openHistory()
+                }
+              })
+          }
+
           Blank()
-          // 模式切换
-          Text(this.viewModel.mode === 'blocking' ? '阻塞' : '流式')
-            .fontSize(12)
-            .fontColor('#fff')
-            .backgroundColor(this.viewModel.mode === 'blocking' ? '#E6A23C' : '#67C23A')
-            .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-            .borderRadius(10)
-            .margin({ right: 8 })
-            .onClick(() => this.viewModel.toggleMode())
-          // 历史
-          Text('历史')
-            .fontSize(14)
-            .fontColor('#E6A23C')
-            .margin({ right: 8 })
-            .onClick(() => {
-              this.showHistory = true
-            })
-          // 新对话
-          Text('新对话')
-            .fontSize(14)
-            .fontColor('#67C23A')
-            .margin({ right: 8 })
-            .onClick(async () => {
-              await this.viewModel.newConversation()
-            })
-          // 清空
-          Text('清空')
-            .fontSize(14)
-            .fontColor('#F56C6C')
-            .onClick(async () => {
-              await this.viewModel.clearMessages()
-            })
+
+          // 中间：标题 + 模式标签
+          Column() {
+            Text(this.viewModel.currentTitle || 'AI对话（Dify）')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1a1a2e')
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Text(this.viewModel.mode === 'blocking' ? '⚡ 阻塞模式' : '⚡ 流式模式')
+              .fontSize(12)
+              .fontColor(this.viewModel.mode === 'blocking' ? '#E6A23C' : '#67C23A')
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.Center)
+
+          Blank()
+
+          // 右侧：模式切换 + 新对话
+          Row() {
+            // 模式切换
+            Text(this.viewModel.mode === 'blocking' ? '阻塞' : '流式')
+              .fontSize(12)
+              .fontColor('#fff')
+              .backgroundColor(this.viewModel.mode === 'blocking' ? '#E6A23C' : '#67C23A')
+              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .borderRadius(12)
+              .margin({ right: 12 })
+              .onClick(() => this.viewModel.toggleMode())
+
+            // 新对话按钮（圆形 + 号）
+            Text('+')
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#fff')
+              .width(36)
+              .height(36)
+              .textAlign(TextAlign.Center)
+              .borderRadius(18)
+              .backgroundColor('#409EFF')
+              .onClick(async () => {
+                await this.viewModel.newConversation()
+              })
+          }
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 12, bottom: 12 })
@@ -118,7 +208,7 @@ struct DifyChatPage {
 
         // ===== 消息列表 =====
         if (this.viewModel.messages.length === 0 && !this.viewModel.sending) {
-          // 空状态(组件)
+          // 空状态
           Column() {
             Text('🤖')
               .fontSize(48)
@@ -193,7 +283,7 @@ struct DifyChatPage {
               }
             })
 
-            // 流式输出中的临时消息（使用 Web 组件渲染 Markdown）
+            // 流式输出中的临时消息
             if (this.viewModel.sending && this.viewModel.streamingContent) {
               ListItem() {
                 Row() {
@@ -277,16 +367,108 @@ struct DifyChatPage {
       }
       .width('100%')
       .height('100%')
+      .translate({ x: `${this.mainContentOffset}%`, y: 0 })
+      .animation({ duration: 300, curve: Curve.EaseOut })
 
-      // ===== 历史面板（从右侧滑出） =====
-      HistoryPanel({
-        visible: this.showHistory,
-        history: this.viewModel.history,
-        currentConversationId: this.viewModel.conversationId,
-        onClose: () => this.closeHistory(),
-        onSelect: (record: ConversationRecord) => this.selectConversation(record),
-        onDelete: (record: ConversationRecord) => this.deleteConversation(record)
-      })
+      // ===== 历史面板（从右侧滑入，固定宽度 75%）=====
+      Column() {
+        // 头部
+        Row() {
+          Text('历史对话')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1a1a2e')
+          Blank()
+          Text('✕')
+            .fontSize(18)
+            .fontColor('#999')
+            .onClick(() => this.closeHistory())
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 16, bottom: 12 })
+        .backgroundColor('#ffffff')
+
+        Divider()
+          .color('#f0f0f0')
+          .strokeWidth(1)
+
+        // 历史会话列表
+        if (this.viewModel.history.length === 0) {
+          Column() {
+            Text('📭')
+              .fontSize(48)
+              .margin({ bottom: 12 })
+            Text('暂无历史对话')
+              .fontSize(14)
+              .fontColor('#999')
+          }
+          .width('100%')
+          .flexGrow(1)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor('#fafafa')
+        } else {
+          List() {
+            ForEach(this.viewModel.history, (item: ConversationRecord) => {
+              ListItem() {
+                Row() {
+                  Column() {
+                    Text(item.title)
+                      .fontSize(16)
+                      .fontColor(item.conversationId === this.viewModel.conversationId ? '#409EFF' : '#333')
+                      .fontWeight(item.conversationId === this.viewModel.conversationId ? FontWeight.Medium : FontWeight.Normal)
+                    Text(item.lastMessage)
+                      .fontSize(12)
+                      .fontColor('#999')
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      .margin({ top: 4 })
+                    Text(DateUtil.format(item.timestamp))
+                      .fontSize(10)
+                      .fontColor('#ccc')
+                      .margin({ top: 4 })
+                  }
+                  .alignItems(HorizontalAlign.Start)
+                  .layoutWeight(1)
+
+                  Text('×')
+                    .fontSize(18)
+                    .fontColor('#999')
+                    .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                    .margin({ left: 8 })
+                    .onClick(() => {
+                      this.showDeleteConfirm(item)
+                    })
+                }
+                .width('100%')
+                .padding(12)
+                .backgroundColor(item.conversationId === this.viewModel.conversationId ? '#ecf5ff' : '#fff')
+                .borderRadius(8)
+                .onClick(() => this.selectConversation(item))
+              }
+              .margin({ left: 12, right: 12, top: 8 })
+            }, (item: ConversationRecord) => item.conversationId)
+          }
+          .width('100%')
+          .flexGrow(1)
+          .backgroundColor('#fafafa')
+          .padding({ bottom: 12 })
+        }
+
+        // 底部提示
+        Text('提示：点击对话可继续之前的会话')
+          .fontSize(12)
+          .fontColor('#ccc')
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .padding(12)
+          .backgroundColor('#ffffff')
+      }
+      .width('75%')
+      .height('100%')
+      .backgroundColor('#ffffff')
+      .position({ x: 0, y: 0 })
+      .translate({ x: `${this.historyPanelOffset}%`, y: 0 })
+      .animation({ duration: 300, curve: Curve.EaseOut })
     }
     .width('100%')
     .height('100%')
