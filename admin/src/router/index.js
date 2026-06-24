@@ -49,7 +49,7 @@ const routes = [
       {
         path: '/skilltree',
         name: 'SkillTree',
-        component: () => import('../views/tree.vue'),
+        component: () => import('../views/SkillTree.vue'),
         meta: { title: '技能树' }
       }
     ]
