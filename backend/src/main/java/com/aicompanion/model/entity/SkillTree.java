@@ -1,5 +1,5 @@
 package com.aicompanion.model.entity;
-
+import com.aicompanion.model.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -10,21 +10,19 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+// 映射技能树表名skill_tree
 @TableName("skill_tree")
 public class SkillTree extends BaseEntity {
-    
     /**
      * 技能树名称
      */
     @TableField("name")
-    private String name;
-    
+    private String name;   
     /**
      * 技能树描述
      */
     @TableField("description")
     private String description;
-    
     /**
      * 图标
      */

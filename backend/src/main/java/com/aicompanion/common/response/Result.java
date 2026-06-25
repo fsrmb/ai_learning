@@ -1,66 +1,53 @@
 package com.aicompanion.common.response;
 
 import lombok.Data;
+import java.io.Serializable;
 
-/**
- * 统一响应类
- * @param <T> 数据类型
- */
 @Data
-public class Result<T> {
-    
-    private Integer code;
+public class Result<T> implements Serializable {
+
+    private int code;
     private String message;
     private T data;
-    
-    public Result() {
-    }
-    
-    public Result(Integer code, String message, T data) {
-        this.code = code;
-        this.message = message;
-        this.data = data;
-    }
-    
-    /**
-     * 成功响应
-     */
+
+    /** 成功（无数据） */
     public static <T> Result<T> success() {
-        return new Result<>(200, "操作成功", null);
+        return success(null);
     }
-    
-    /**
-     * 成功响应（带数据）
-     */
+
+    /** 成功（有数据） */
     public static <T> Result<T> success(T data) {
-        return new Result<>(200, "操作成功", data);
+        Result<T> r = new Result<>();
+        r.setCode(200);
+        r.setMessage("操作成功");
+        r.setData(data);
+        return r;
     }
-    
-    /**
-     * 成功响应（自定义消息和数据）
-     */
+
+    /** 成功（自定义消息 + 数据） */
     public static <T> Result<T> success(String message, T data) {
-        return new Result<>(200, message, data);
+        Result<T> r = new Result<>();
+        r.setCode(200);
+        r.setMessage(message);
+        r.setData(data);
+        return r;
     }
-    
-    /**
-     * 失败响应
-     */
-    public static <T> Result<T> error() {
-        return new Result<>(500, "操作失败", null);
-    }
-    
-    /**
-     * 失败响应（自定义消息）
-     */
+
+    /** 失败（默认 500） */
     public static <T> Result<T> error(String message) {
-        return new Result<>(500, message, null);
+        return error(500, message);
     }
-    
-    /**
-     * 失败响应（自定义状态码和消息）
-     */
-    public static <T> Result<T> error(Integer code, String message) {
-        return new Result<>(code, message, null);
+
+    /** 失败（自定义状态码） */
+    public static <T> Result<T> error(int code, String message) {
+        Result<T> r = new Result<>();
+        r.setCode(code);
+        r.setMessage(message);
+        return r;
+    }
+
+    /** 参数错误（400） */
+    public static <T> Result<T> badRequest(String message) {
+        return error(400, message);
     }
 }

@@ -25,40 +25,16 @@ public class AuthController {
      */
     @PostMapping("/register")
     public Result<Long> register(@Valid @RequestBody RegisterDTO registerDTO) {
-        //userService.register(registerDTO);
-        Long userID=1L;
-        return Result.success("注册成功", userID);
+        userService.register(registerDTO);
+        return Result.success("注册成功", null);
     }
     
     /**
      * 用户登录
      */
-     @PostMapping("/login")
-     public Result<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
-         //LoginVO loginVO = userService.login(loginDTO);
-         String testname="admin";
-         String testpassword="123456";
-
-
-         if(testpassword.equals(loginDTO.getPassword())&&testname.equals(loginDTO.getUsername())){
-             LoginVO loginVO=new LoginVO();
-             loginVO.setToken("test-token-" + System.currentTimeMillis());
-
-             UserVO userVO=new UserVO();
-             userVO.setId(1L);
-             userVO.setUsername(testname);
-             userVO.setNickname(testname);
-             userVO.setRole("user");
-             loginVO.setUser(userVO);
-             return Result.success("登录成功",loginVO);
-         }
-         return Result.error("用户名或密码错误");
-     }
-//    @PostMapping("/login")
-//    public Result<Long> login(@Valid @RequestBody LoginDTO loginDTO) {
-//        //LoginVO loginVO = userService.login(loginDTO);
-//        //return Result.success(loginVO);
-//        Long userID=1L;
-//        return Result.success("登录成功", userID);
-//    }
+    @PostMapping("/login")
+    public Result<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
+        LoginVO loginVO = userService.login(loginDTO);
+        return Result.success("登录成功", loginVO);
+    }
 }

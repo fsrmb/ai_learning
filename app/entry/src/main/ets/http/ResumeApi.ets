@@ -1,11 +1,12 @@
 import { fileIo } from '@kit.CoreFileKit'
 import { Constants } from '../common/Constants'
 import { DifyHttpClient } from './DifyHttpClient'
-import { WorkflowRequestData, WorkflowResult, WorkflowInputs } from '../model/ResumeWorkflow'
+import { WorkflowRequestData, WorkflowResult, WorkflowInputs, FileUploadResult, InputFileObject } from '../model/ResumeWorkflow'
 
 /**
  * 简历优化 API
  * 调用 Dify 工作流完成简历优化
+ * 文件上传流程：先调用 /v1/files/upload 获取 upload_file_id，再调用 /v1/workflows/run
  */
 export class ResumeApi {
   /**
@@ -93,7 +94,17 @@ export class ResumeApi {
   }
 
   /**
-   * 带文件的请求（multipart/form-data）
+   * 带文件的请求（先上传文件获取 upload_file_id，再将文件ID传给工作流）
+   * 文件直接由工作流处理，不在移动端转换为文本
+   * 请求格式: POST /v1/workflows/run
+   * {
+   *   "inputs": {
+   *     "resume_content": "用户补充说明",
+   *     "resume_file": [{"type": "document", "transfer_method": "local_file", "upload_file_id": "xxx"}]
+   *   },
+   *   "response_mode": "blocking",
+   *   "user": "user-resume"
+   * }
    */
   private static async sendWithFile(
     content: string,
@@ -101,54 +112,64 @@ export class ResumeApi {
   ): Promise<string> {
     console.info('ResumeApi sendWithFile: uploading file...')
 
-    const fileName: string = fileUri.split('/').pop() || 'resume.pdf'
+    const fileName: string = fileUri.split('/').pop() || 'resume.txt'
     const fileExtension: string = fileName.split('.').pop()?.toLowerCase() || ''
-
-    const fileContentBase64: string = await ResumeApi.readFileAsBase64(fileUri)
-
-    let resumeContent: string = content
-    if (!resumeContent && (fileExtension === 'txt' || fileExtension === 'md')) {
-      resumeContent = ResumeApi.base64ToString(fileContentBase64)
-    }
-
-    const inputs: WorkflowInputs = new WorkflowInputs()
-    inputs.resume_content = resumeContent
-
-    const requestBody: WorkflowRequestData = new WorkflowRequestData()
-    requestBody.inputs = inputs
-    requestBody.response_mode = 'blocking'
-    requestBody.user = 'user-resume'
-
-    const boundary: string = '----ResumeBoundary' + Date.now()
-    const multipartData: string = ResumeApi.buildMultipartData(boundary, requestBody, fileName, fileContentBase64, fileExtension)
+    const contentType: string = ResumeApi.getContentType(fileExtension)
 
     try {
-      const result: WorkflowResult = await DifyHttpClient.postMultipart<WorkflowResult>(
-        '/workflows/run',
-        multipartData,
-        `multipart/form-data; boundary=${boundary}`
+      const uploadResult: FileUploadResult = await DifyHttpClient.uploadFile<FileUploadResult>(
+        '/files/upload',
+        fileUri,
+        fileName,
+        contentType
       )
+
+      if (!uploadResult.id) {
+        throw new Error('文件上传失败，未返回文件ID')
+      }
+
+      console.info(`ResumeApi sendWithFile: file uploaded successfully, id=${uploadResult.id}`)
+
+      const fileObject: InputFileObject = new InputFileObject()
+      fileObject.upload_file_id = uploadResult.id
+      fileObject.type = 'document'
+
+      const inputs: WorkflowInputs = new WorkflowInputs()
+      inputs.resume_content = content
+      inputs.resume_file = [fileObject]
+
+      const requestBody: WorkflowRequestData = new WorkflowRequestData()
+      requestBody.inputs = inputs
+      requestBody.response_mode = 'blocking'
+      requestBody.user = 'user-resume'
+
+      const result: WorkflowResult = await DifyHttpClient.post<WorkflowResult>('/workflows/run', requestBody)
       return ResumeApi.extractWorkflowOutput(result)
+
     } catch (error) {
       const errorMessage: string = error instanceof Error ? error.message : '文件上传失败'
+      console.error(`ResumeApi sendWithFile exception: ${errorMessage}`)
       throw new Error(errorMessage)
     }
   }
 
-  private static async readFileAsBase64(fileUri: string): Promise<string> {
+  /**
+   * 读取文本文件内容
+   */
+  private static async readFileContent(fileUri: string): Promise<string> {
     try {
       const file = await fileIo.open(fileUri, fileIo.OpenMode.READ_ONLY)
-      const buffer: ArrayBuffer = new ArrayBuffer(4096)
-      let content: string = ''
-
-      while (true) {
-        const bytesRead: number = await fileIo.read(file.fd, buffer)
-        if (bytesRead === 0) break
-        const view: Uint8Array = new Uint8Array(buffer, 0, bytesRead)
-        content += ResumeApi.arrayBufferToBase64(view)
-      }
-
+      const stat = await fileIo.stat(fileUri)
+      const fileSize = stat.size
+      const buffer = new ArrayBuffer(fileSize)
+      await fileIo.read(file.fd, buffer)
       await fileIo.close(file.fd)
+
+      const uint8Array = new Uint8Array(buffer)
+      let content = ''
+      for (let i = 0; i < uint8Array.length; i++) {
+        content += String.fromCharCode(uint8Array[i])
+      }
       return content
     } catch (error) {
       const errorMessage: string = error instanceof Error ? error.message : '文件读取失败'
@@ -156,65 +177,9 @@ export class ResumeApi {
     }
   }
 
-  private static arrayBufferToBase64(buffer: Uint8Array): string {
-    const base64Chars: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    let result: string = ''
-    const len: number = buffer.byteLength
-    let i: number = 0
-
-    while (i < len) {
-      const byte1: number = buffer[i++] || 0
-      const byte2: number = i < len ? buffer[i++] : 0
-      const byte3: number = i < len ? buffer[i++] : 0
-
-      const enc1: number = byte1 >> 2
-      const enc2: number = ((byte1 & 3) << 4) | (byte2 >> 4)
-      const enc3: number = ((byte2 & 15) << 2) | (byte3 >> 6)
-      const enc4: number = byte3 & 63
-
-      result += base64Chars[enc1]
-      result += base64Chars[enc2]
-      result += i > len + 1 ? '=' : base64Chars[enc3]
-      result += i > len ? '=' : base64Chars[enc4]
-    }
-
-    return result
-  }
-
-  private static buildMultipartData(
-    boundary: string,
-    requestBody: WorkflowRequestData,
-    fileName: string,
-    fileContent: string,
-    fileExtension: string
-  ): string {
-    let data: string = ''
-
-    data += `--${boundary}\r\n`
-    data += 'Content-Disposition: form-data; name="inputs"\r\n'
-    data += 'Content-Type: application/json\r\n\r\n'
-    data += JSON.stringify(requestBody.inputs) + '\r\n'
-
-    data += `--${boundary}\r\n`
-    data += 'Content-Disposition: form-data; name="response_mode"\r\n\r\n'
-    data += requestBody.response_mode + '\r\n'
-
-    data += `--${boundary}\r\n`
-    data += 'Content-Disposition: form-data; name="user"\r\n\r\n'
-    data += requestBody.user + '\r\n'
-
-    const contentType: string = ResumeApi.getContentType(fileExtension)
-    data += `--${boundary}\r\n`
-    data += `Content-Disposition: form-data; name="files"; filename="${fileName}"\r\n`
-    data += `Content-Type: ${contentType}\r\n`
-    data += 'Content-Transfer-Encoding: base64\r\n\r\n'
-    data += fileContent + '\r\n'
-
-    data += `--${boundary}--\r\n`
-
-    return data
-  }
-
+  /**
+   * 根据文件扩展名获取 Content-Type
+   */
   private static getContentType(extension: string): string {
     const contentTypes: Record<string, string> = {
       'txt': 'text/plain',
@@ -225,34 +190,5 @@ export class ResumeApi {
       'rtf': 'application/rtf'
     }
     return contentTypes[extension] || 'application/octet-stream'
-  }
-
-  private static base64ToString(base64: string): string {
-    const base64Chars: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    let result: string = ''
-    let i: number = 0
-
-    base64 = base64.replace(/[^A-Za-z0-9+/=]/g, '')
-
-    while (i < base64.length) {
-      const enc1: number = base64Chars.indexOf(base64.charAt(i++))
-      const enc2: number = base64Chars.indexOf(base64.charAt(i++))
-      const enc3: number = base64Chars.indexOf(base64.charAt(i++))
-      const enc4: number = base64Chars.indexOf(base64.charAt(i++))
-
-      const byte1: number = (enc1 << 2) | (enc2 >> 4)
-      const byte2: number = ((enc2 & 15) << 4) | (enc3 >> 2)
-      const byte3: number = ((enc3 & 3) << 6) | enc4
-
-      result += String.fromCharCode(byte1)
-      if (enc3 !== 64) {
-        result += String.fromCharCode(byte2)
-      }
-      if (enc4 !== 64) {
-        result += String.fromCharCode(byte3)
-      }
-    }
-
-    return result
   }
 }

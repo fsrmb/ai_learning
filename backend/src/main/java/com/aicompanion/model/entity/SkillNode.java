@@ -12,7 +12,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("skill_node")
 public class SkillNode extends BaseEntity {
-    
+        
     /**
      * 技能树ID
      */

@@ -11,7 +11,7 @@ import java.util.List;
  * 技能树服务接口
  */
 public interface SkillTreeService {
-    
+    //单纯进行声明，不实现具体逻辑，逻辑在SkillTreeServiceImpl中
     /**
      * 创建技能树
      */

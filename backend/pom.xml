@@ -99,7 +99,27 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    
+    <!-- MyBatis-Plus（Spring Boot 3.x 专用 starter） -->
+    <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        <version>3.5.7</version>
+    </dependency>
+
+    <!-- MySQL 驱动 -->
+    <dependency>
+        <groupId>com.mysql</groupId>
+        <artifactId>mysql-connector-j</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+    <!-- Lombok（简化实体类代码） -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+
     <build>
         <plugins>
             <plugin>

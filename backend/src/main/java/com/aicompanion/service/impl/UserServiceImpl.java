@@ -1,9 +1,9 @@
 package com.aicompanion.service.impl;
 
+import com.aicompanion.model.entity.User;
 import com.aicompanion.model.dto.LoginDTO;
 import com.aicompanion.model.dto.RegisterDTO;
 import com.aicompanion.model.dto.UserDTO;
-import com.aicompanion.model.entity.User;
 import com.aicompanion.common.exception.BusinessException;
 import com.aicompanion.mapper.UserMapper;
 import com.aicompanion.service.UserService;
@@ -16,6 +16,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 用户服务实现类
@@ -37,7 +39,9 @@ public class UserServiceImpl implements UserService {
         if (userMapper.selectCount(queryWrapper) > 0) {
             throw new BusinessException("用户名已存在");
         }
-        
+        if (registerDTO.getPassword() == null || registerDTO.getPassword().length() < 6) {
+            throw new BusinessException(400, "密码长度不能少于6位");
+        }
         // 创建用户
         User user = new User();
         BeanUtils.copyProperties(registerDTO, user);
@@ -86,6 +90,11 @@ public class UserServiceImpl implements UserService {
     }
     
     @Override
+    public User getById(Long userId) {
+        return userMapper.selectById(userId);
+    }
+
+    @Override
     public UserVO getUserInfo(Long userId) {
         User user = userMapper.selectById(userId);
         if (user == null) {
@@ -116,5 +125,25 @@ public class UserServiceImpl implements UserService {
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
         return userVO;
+    }
+
+    @Override
+    public List<User> searchUsers(String role, String keyword) {
+        return userMapper.searchUsers(role, keyword);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void save(User user) {
+        if (user.getId() == null) {
+            // 新增
+            if (user.getStatus() == null) {
+                user.setStatus(1);
+            }
+            userMapper.insert(user);
+        } else {
+            // 更新
+            userMapper.updateById(user);
+        }
     }
 }
