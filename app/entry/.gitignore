@@ -4,3 +4,4 @@
 /build
 /.cxx
 /.test
+common/EnvConfig.local

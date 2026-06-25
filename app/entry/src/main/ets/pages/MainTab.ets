@@ -73,6 +73,38 @@ struct MainTab {
         Text('智能学习，助力成长')
           .fontSize(14)
           .fontColor('#8898aa')
+          .margin({ bottom: 20 })
+
+        Column() {
+          Row() {
+            Text('📄')
+              .fontSize(24)
+              .margin({ right: 12 })
+            Column() {
+              Text('简历优化')
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#1a1a2e')
+              Text('上传简历，AI 帮你优化')
+                .fontSize(12)
+                .fontColor('#8898aa')
+                .margin({ top: 4 })
+            }
+            Blank()
+            Text('→')
+              .fontSize(16)
+              .fontColor('#ccc')
+          }
+          .width('100%')
+          .padding(16)
+        }
+        .width('90%')
+        .backgroundColor('#fff')
+        .borderRadius(12)
+        .shadow({ radius: 4, color: '#000000', offsetY: 2 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/ResumeOptimize' })
+        })
       }
       .flexGrow(1)
       .width('100%')

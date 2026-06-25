@@ -16,6 +16,8 @@ export class Constants {
   //static readonly BASE_URL: string = 'http://172.19.18.216:8080'
   //static readonly LINK_URL: string =
   static readonly TOKEN_KEY: string = 'app-b3e3vd7rYn1PEThoxkGBB7Kf'
+  static readonly RESUME_API_URL: string = `http://${Constants.MY_IP}/v1`  // 简历优化 API 地址（Dify Workflow 模式，端点 /v1/workflows/run）
+  static readonly RESUME_API_KEY: string = 'app-Rbeph2hyTnyLH3MLkcKYb4VP'    // 简历优化 API 密钥（待填写）
   static readonly USER_ID_KEY: string = 'ai_app_user_id'
   static readonly USERNAME_KEY: string = 'ai_app_username'
   static readonly PASSWORD_KEY: string = 'ai_app_password'

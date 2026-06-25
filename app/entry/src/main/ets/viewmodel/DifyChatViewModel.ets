@@ -104,10 +104,11 @@ export class DifyChatViewModel {
 
   private async sendBlocking(content: string): Promise<void> {
     const result: ChatResult = await this.difyApi.chatBlocking(content, this.conversationId)
+    const filteredAnswer = DifyChatViewModel.removeThinkTags(result.answer)
 
     const aiMsg: ChatMessage = {
       role: 'assistant',
-      content: result.answer,
+      content: filteredAnswer,
       timestamp: Date.now()
     }
     this.messages.push(aiMsg)
@@ -119,7 +120,7 @@ export class DifyChatViewModel {
       await this.updateConversationId(result.conversationId)
     }
 
-    await this.saveToHistory(content, result.answer)
+    await this.saveToHistory(content, filteredAnswer)
   }
 
   // ========================================
@@ -132,7 +133,8 @@ export class DifyChatViewModel {
     const callbacks: StreamCallbacks = {
       onChunk: (text: string) => {
         console.log('DifyChatViewModel onChunk:', text)
-        this.streamingContent += text
+        const filteredText = DifyChatViewModel.removeThinkTags(text)
+        this.streamingContent += filteredText
         console.log('DifyChatViewModel streamingContent length:', this.streamingContent.length)
       },
       onComplete: async (convId: string) => {
@@ -144,15 +146,17 @@ export class DifyChatViewModel {
           await this.updateConversationId(convId)
         }
         
+        const filteredContent = DifyChatViewModel.removeThinkTags(this.streamingContent)
+        
         const aiMsg: ChatMessage = {
           role: 'assistant',
-          content: this.streamingContent,
+          content: filteredContent,
           timestamp: Date.now()
         }
         this.messages.push(aiMsg)
         console.log('DifyChatViewModel onComplete, messages count:', this.messages.length)
         
-        await this.saveToHistory(content, this.streamingContent)
+        await this.saveToHistory(content, filteredContent)
       },
       onError: (error: string) => {
         console.error('DifyChatViewModel onError:', error)
@@ -344,6 +348,10 @@ export class DifyChatViewModel {
    * @param conversationId 会话 ID
    * @param messages 消息列表
    */
+  private static removeThinkTags(text: string): string {
+    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+  }
+
   private async saveMessagesToStorage(conversationId: string, messages: ChatMessage[]): Promise<void> {
     try {
       const record = await this.historyManager.getConversation(conversationId)

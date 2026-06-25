@@ -4,6 +4,7 @@
     "pages/MainTab",
     "pages/Profile",
     "pages/Register",
-    "pages/DifyChat"
+    "pages/DifyChat",
+    "pages/ResumeOptimize"
   ]
 }
