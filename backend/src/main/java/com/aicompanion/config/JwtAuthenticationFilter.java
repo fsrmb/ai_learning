@@ -1,4 +1,4 @@
-package com.aicompanion.security;
+package com.aicompanion.config;
 
 import com.aicompanion.common.util.JwtUtil;
 import com.aicompanion.model.entity.User;

@@ -1,7 +1,10 @@
 D:\ai_learning\backend\src\main\java\com\aicompanion\controller\AuthController.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\AiCompanionApplication.java
+D:\ai_learning\backend\src\main\java\com\aicompanion\config\JwtAuthenticationEntryPoint.java
+D:\ai_learning\backend\src\main\java\com\aicompanion\config\JwtAuthenticationFilter.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\service\impl\UserServiceImpl.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\common\exception\BusinessException.java
+D:\ai_learning\backend\src\main\java\com\aicompanion\config\SecurityConfig.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\entity\SkillTree.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\entity\User.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\entity\BaseEntity.java
@@ -15,6 +18,7 @@ D:\ai_learning\backend\src\main\java\com\aicompanion\mapper\SkillNodeMapper.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\dto\UserDTO.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\controller\SkillTreeController.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\vo\LoginVO.java
+D:\ai_learning\backend\src\main\java\com\aicompanion\common\util\SecurityUtil.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\service\impl\SkillTreeServiceImpl.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\entity\SkillNode.java
 D:\ai_learning\backend\src\main\java\com\aicompanion\model\vo\SkillTreeVO.java

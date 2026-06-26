@@ -1,4 +1,4 @@
-package com.aicompanion.common.config;
+package com.aicompanion.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
