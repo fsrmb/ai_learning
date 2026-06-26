@@ -88,6 +88,29 @@ export class TokenUtil {
     }
   }
 
+  static async saveNickname(nickname: string): Promise<void> {
+    try {
+      const pref = await TokenUtil.getPreferences()
+      await pref.put(Constants.NICKNAME_KEY, nickname)
+      await pref.flush()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      console.error('TokenUtil saveNickname failed:', errorMessage)
+    }
+  }
+
+  static async getNickname(): Promise<string> {
+    try {
+      const pref = await TokenUtil.getPreferences()
+      const nickname = await pref.get(Constants.NICKNAME_KEY, '')
+      return nickname as string
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      console.error('TokenUtil getNickname failed:', errorMessage)
+      return ''
+    }
+  }
+
   static async getUsername(): Promise<string> {
     try {
       const pref = await TokenUtil.getPreferences()

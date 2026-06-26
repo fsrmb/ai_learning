@@ -23,6 +23,7 @@ export class Constants {
   static readonly PASSWORD_KEY: string = 'ai_app_password'
   static readonly REMEMBER_ME_KEY: string = 'ai_app_remember_me'
   static readonly USER_INFO_KEY: string = 'ai_app_user_info'
+  static readonly NICKNAME_KEY: string = 'ai_app_nickname'
   static readonly PREFERENCES_NAME: string = 'ai_app_preferences'
   static readonly TIMEOUT: number = 15000                    // 超时时间 15秒
 }

@@ -37,3 +37,9 @@ export class RegisterRequest {
   email: string = ''
   nickname: string = ''
 }
+
+export class UpdateUserRequest {
+  nickname: string = ''
+  email: string = ''
+  phone: string = ''
+}

@@ -46,6 +46,12 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void register(RegisterDTO registerDTO) {
+        register(registerDTO, "ADMIN");
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void register(RegisterDTO registerDTO, String role) {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, registerDTO.getUsername());
         if (userMapper.selectCount(queryWrapper) > 0) {
@@ -57,7 +63,12 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         BeanUtils.copyProperties(registerDTO, user);
         user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
-        user.setRole("ADMIN");
+        
+        if (registerDTO.getNickname() == null || registerDTO.getNickname().isEmpty()) {
+            user.setNickname(registerDTO.getUsername());
+        }
+        
+        user.setRole(role != null ? role : "STUDENT");
         user.setStatus(1);
         userMapper.insert(user);
     }

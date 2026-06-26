@@ -14,9 +14,16 @@ import java.util.List;
 public interface UserService {
 
     /**
-     * 用户注册
+     * 用户注册（默认 ADMIN 角色）
      */
     void register(RegisterDTO registerDTO);
+    
+    /**
+     * 用户注册（指定角色）
+     * @param registerDTO 注册信息
+     * @param role 用户角色（ADMIN/STUDENT）
+     */
+    void register(RegisterDTO registerDTO, String role);
 
     /**
      * 用户登录

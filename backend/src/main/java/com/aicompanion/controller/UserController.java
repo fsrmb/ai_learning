@@ -27,6 +27,18 @@ public class UserController {
         UserVO user = userService.getCurrentUser();
         return Result.success(user);
     }
+    
+    /**
+     * 更新当前用户信息（移动端专用，只允许修改自己的昵称、邮箱、手机号等基础信息）
+     */
+    @PutMapping("/me")
+    public Result<Void> updateCurrentUser(@RequestBody UserDTO userDTO) {
+        UserVO currentUser = userService.getCurrentUser();
+        userDTO.setRole(null);
+        userDTO.setPassword(null);
+        userService.updateUser(currentUser.getId(), userDTO);
+        return Result.success("更新成功", null);
+    }
 
     @GetMapping("/{id}")
     public Result<UserVO> getUser(@PathVariable Long id) {

@@ -1,4 +1,4 @@
-import { LoginRequest, LoginResponse } from '../model/User'
+import { LoginRequest, LoginResponse, RegisterRequest } from '../model/User'
 import { AuthApi } from '../http/AuthApi'
 import { TokenUtil } from '../common/TokenUtil'
 
@@ -6,6 +6,7 @@ import { TokenUtil } from '../common/TokenUtil'
 export class UserViewModel {
   username: string = ''
   password: string = ''
+  email: string = ''
   loading: boolean = false
   errorMessage: string = ''
 
@@ -22,12 +23,15 @@ export class UserViewModel {
       const response: LoginResponse = await AuthApi.login(request)
       await TokenUtil.setToken(response.token)
       
-      // 从嵌套的 user 对象中提取用户信息
       const userId = response.user.id > 0 ? response.user.id : 1
       const username = response.user.username !== '' ? response.user.username : response.user.nickname
       await TokenUtil.saveUserInfo(userId, username)
       
-      console.info(`UserViewModel: Login success - userId: ${userId}, username: ${username}`)
+      if (response.user.nickname) {
+        await TokenUtil.saveNickname(response.user.nickname)
+      }
+      
+      console.info(`UserViewModel: Login success - userId: ${userId}, username: ${username}, nickname: ${response.user.nickname}`)
       return true
     } catch (error) {
       this.errorMessage = error instanceof Error ? error.message : '登录失败'
@@ -38,10 +42,35 @@ export class UserViewModel {
     }
   }
 
+  async register(): Promise<boolean> {
+    this.loading = true
+    this.errorMessage = ''
+
+    try {
+      const request: RegisterRequest = {
+        username: this.username,
+        password: this.password,
+        email: this.email,
+        nickname: this.username
+      }
+
+      await AuthApi.register(request)
+      console.info(`UserViewModel: Register success - username: ${this.username}`)
+      return true
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : '注册失败'
+      console.error('UserViewModel: Register failed:', this.errorMessage)
+      return false
+    } finally {
+      this.loading = false
+    }
+  }
+
   async logout(): Promise<void> {
     await TokenUtil.clearAll()
     this.username = ''
     this.password = ''
+    this.email = ''
   }
 
   async isLoggedIn(): Promise<boolean> {

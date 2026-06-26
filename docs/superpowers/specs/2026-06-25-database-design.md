@@ -449,7 +449,7 @@ CREATE TABLE IF NOT EXISTS `resume_optimization` (
 
 -- 1. 插入用户数据（密码均为 123456，BCrypt加密后）
 INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `phone`, `avatar`, `role`, `status`, `create_time`, `update_time`) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '管理员', 'admin@example.com', '13800138000', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'ADMIN', 1, '2024-01-01 08:00:00', '2024-01-01 08:00:00'),
+('admin', '$10$0XuhG3gCM0dYDCEdBjsVuj0TNF03WIukodcEH2tMph9Gii4uckQ6', '管理员', 'admin@example.com', '13800138000', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'ADMIN', 1, '2024-01-01 08:00:00', '2024-01-01 08:00:00'),
 ('zhangsan', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '张三', 'zhangsan@example.com', '13800138001', 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhangsan', 'STUDENT', 1, '2024-01-15 10:30:00', '2024-06-20 14:00:00'),
 ('lisi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '李四', 'lisi@example.com', '13800138002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lisi', 'STUDENT', 1, '2024-02-10 09:15:00', '2024-06-18 16:30:00'),
 ('wangwu', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '王五', 'wangwu@example.com', '13800138003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=wangwu', 'STUDENT', 1, '2024-03-05 11:45:00', '2024-06-15 10:00:00'),

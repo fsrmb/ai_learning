@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI'
 import { promptAction } from '@kit.ArkUI'
 import { IconInput } from '../components/IconInput'
 import { ErrorTip } from '../components/ErrorTip'
+import { UserViewModel } from '../viewmodel/UserViewModel'
 
 @Entry
 @Component
@@ -12,6 +13,8 @@ struct Register {
   @State email: string = ''
   @State loading: boolean = false
   @State errorMessage: string = ''
+
+  private userViewModel: UserViewModel = new UserViewModel()
 
   build() {
     Column() {
@@ -177,6 +180,12 @@ struct Register {
       return
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(this.email)) {
+      this.errorMessage = '邮箱格式不正确'
+      return
+    }
+
     if (this.password === '') {
       this.errorMessage = '请输入密码'
       return
@@ -195,20 +204,28 @@ struct Register {
     this.loading = true
     this.errorMessage = ''
 
+    this.userViewModel.username = this.username
+    this.userViewModel.password = this.password
+    this.userViewModel.email = this.email
+
     try {
-      await new Promise<void>((resolve) => setTimeout(resolve, 1000))
+      const success: boolean = await this.userViewModel.register()
 
-      promptAction.showToast({
-        message: '注册成功！',
-        duration: 2000,
-        bottom: 100
-      })
+      if (success) {
+        promptAction.showToast({
+          message: '注册成功！',
+          duration: 2000,
+          bottom: 100
+        })
 
-      setTimeout(() => {
-        router.back()
-      }, 1500)
+        setTimeout(() => {
+          router.back()
+        }, 1500)
+      } else {
+        this.errorMessage = this.userViewModel.errorMessage || '注册失败'
+      }
     } catch (error) {
-      this.errorMessage = '注册失败，请重试'
+      this.errorMessage = error instanceof Error ? error.message : '注册失败，请重试'
     } finally {
       this.loading = false
     }
