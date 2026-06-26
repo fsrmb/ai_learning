@@ -20,4 +20,5 @@ public interface UserMapper extends BaseMapper<User> {
      * @return 用户列表
      */
     List<User> searchUsers(@Param("role") String role, @Param("keyword") String keyword);
+    int batchUpdateStatus(@Param("ids") List<Long> ids, @Param("status") Integer status);
 }

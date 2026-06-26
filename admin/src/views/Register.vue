@@ -1,6 +1,5 @@
 <template>
   <div class="login-container">
-    <!-- 装饰性背景 -->
     <div class="bg-decoration">
       <div class="bg-circle bg-circle-1"></div>
       <div class="bg-circle bg-circle-2"></div>
@@ -8,7 +7,6 @@
     </div>
     
     <div class="login-wrapper">
-      <!-- 左侧品牌区域 -->
       <div class="login-left">
         <div class="brand-content">
           <div class="brand-logo">
@@ -36,16 +34,15 @@
         </div>
       </div>
       
-      <!-- 右侧登录表单 -->
       <div class="login-right">
         <div class="login-card">
           <div class="card-header">
-            <h2 class="card-title">欢迎回来</h2>
-            <p class="card-desc">请登录您的账号以继续</p>
+            <h2 class="card-title">创建账号</h2>
+            <p class="card-desc">注册后即可使用完整功能</p>
           </div>
           
           <el-form 
-            ref="loginFormRef" 
+            ref="registerFormRef" 
             :model="form" 
             :rules="rules" 
             label-position="top"
@@ -70,7 +67,7 @@
               <el-input
                 v-model="form.password"
                 type="password"
-                placeholder="请输入密码"
+                placeholder="请输入密码（至少6位）"
                 size="large"
                 class="form-input"
                 show-password
@@ -83,12 +80,37 @@
               </el-input>
             </el-form-item>
             
-            <div class="form-options">
-              <el-checkbox v-model="form.rememberMe" class="remember-checkbox">
-                记住密码
-              </el-checkbox>
-              <span class="forgot-link">忘记密码？</span>
-            </div>
+            <el-form-item prop="confirmPassword" class="form-item">
+              <el-input
+                v-model="form.confirmPassword"
+                type="password"
+                placeholder="请确认密码"
+                size="large"
+                class="form-input"
+                show-password
+              >
+                <template #prefix>
+                  <div class="input-icon-wrapper">
+                    <span class="input-icon">🔑</span>
+                  </div>
+                </template>
+              </el-input>
+            </el-form-item>
+            
+            <el-form-item prop="email" class="form-item">
+              <el-input
+                v-model="form.email"
+                placeholder="请输入邮箱（选填）"
+                size="large"
+                class="form-input"
+              >
+                <template #prefix>
+                  <div class="input-icon-wrapper">
+                    <span class="input-icon">📧</span>
+                  </div>
+                </template>
+              </el-input>
+            </el-form-item>
             
             <el-form-item class="form-item-btn">
               <el-button
@@ -96,16 +118,16 @@
                 class="login-btn"
                 size="large"
                 :loading="loading"
-                @click="handleLogin"
+                @click="handleRegister"
               >
-                <span v-if="!loading">登 录</span>
+                <span v-if="!loading">注 册</span>
               </el-button>
             </el-form-item>
           </el-form>
           
           <div class="register-hint">
-            <span class="hint-text">还没有账号？</span>
-            <span class="register-link" @click="goToRegister">立即注册</span>
+            <span class="hint-text">已有账号？</span>
+            <span class="register-link" @click="goToLogin">立即登录</span>
           </div>
         </div>
       </div>
@@ -113,52 +135,23 @@
   </div>
 </template>
 <script setup>
-/**
- * 登录页面组件
- * 提供用户登录功能，包括表单验证、登录请求、错误处理
- */
-
-// Vue 核心响应式 API
 import { ref, reactive } from 'vue'
-
-// Vue Router 路由跳转
 import { useRouter } from 'vue-router'
-
-// Element Plus 组件和消息提示
-import { ElMessage, ElForm, ElFormItem, ElInput, ElCheckbox, ElButton } from 'element-plus'
-
-// Pinia 用户状态管理 Store
+import { ElMessage, ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'
 import { useUserStore } from '../stores/user'
 
-/** 路由实例，用于登录成功后跳转和注册链接跳转 */
 const router = useRouter()
-
-/** 用户状态管理实例，提供登录方法 */
 const userStore = useUserStore()
-
-/** 表单引用，用于表单验证 */
-const loginFormRef = ref(null)
-
-/** 登录按钮加载状态 */
+const registerFormRef = ref(null)
 const loading = ref(false)
 
-/**
- * 登录表单数据
- * @property {string} username - 用户名
- * @property {string} password - 密码
- * @property {boolean} rememberMe - 是否记住密码
- */
 const form = reactive({
   username: '',
   password: '',
-  rememberMe: false
+  confirmPassword: '',
+  email: ''
 })
 
-/**
- * 表单验证规则
- * - username: 必填，长度 3-20 字符
- * - password: 必填，长度 6-30 字符
- */
 const rules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -167,56 +160,53 @@ const rules = {
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 30, message: '密码长度在 6 到 30 个字符', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== form.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  email: [
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
   ]
 }
 
-/**
- * 处理登录请求
- * @returns {Promise<void>}
- * @description 先进行表单验证，验证通过后调用 userStore.login() 进行登录，
- *              登录成功后跳转到首页，失败则显示错误提示
- */
-const handleLogin = async () => {
-  // 校验表单引用是否存在
-  if (!loginFormRef.value) return
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
   
-  // 执行表单验证
-  await loginFormRef.value.validate(async (valid) => {
-    // 验证通过
+  await registerFormRef.value.validate(async (valid) => {
     if (valid) {
-      // 设置加载状态
       loading.value = true
       
       try {
-        // 调用 Pinia store 的登录方法
-        await userStore.login(form)
-        
-        // 登录成功，显示成功提示并跳转到首页
-        ElMessage.success('登录成功')
-        router.push('/home')
+        await userStore.register(form)
+        ElMessage.success('注册成功，请登录')
+        router.push('/login')
         
       } catch (error) {
-        // 登录失败，显示错误提示
-        ElMessage.error('登录失败，请重试')
+        ElMessage.error('注册失败，请重试')
         
       } finally {
-        // 无论成功或失败，都重置加载状态
         loading.value = false
       }
     }
   })
 }
 
-/**
- * 跳转到注册页面
- */
-const goToRegister = () => {
-  router.push('/register')
+const goToLogin = () => {
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-/* 主容器 */
 .login-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -228,7 +218,6 @@ const goToRegister = () => {
   overflow: hidden;
 }
 
-/* 装饰性背景 */
 .bg-decoration {
   position: absolute;
   width: 100%;
@@ -279,7 +268,6 @@ const goToRegister = () => {
   }
 }
 
-/* 登录卡片容器 */
 .login-wrapper {
   display: flex;
   width: 950px;
@@ -304,7 +292,6 @@ const goToRegister = () => {
   }
 }
 
-/* 左侧品牌区域 */
 .login-left {
   width: 45%;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -435,7 +422,6 @@ const goToRegister = () => {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 右侧登录表单 */
 .login-right {
   width: 55%;
   padding: 50px 60px;
@@ -467,7 +453,6 @@ const goToRegister = () => {
   color: #8898aa;
 }
 
-/* 表单样式 */
 .login-form {
   margin-bottom: 16px;
 }
@@ -501,30 +486,6 @@ const goToRegister = () => {
 
 .input-icon {
   font-size: 16px;
-}
-
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.remember-checkbox {
-  font-size: 14px;
-  color: #525f7f;
-}
-
-.forgot-link {
-  font-size: 14px;
-  color: #667eea;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.forgot-link:hover {
-  color: #764ba2;
-  text-decoration: underline;
 }
 
 .form-item-btn {
@@ -576,7 +537,6 @@ const goToRegister = () => {
   text-decoration: underline;
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
   .login-wrapper {
     flex-direction: column;

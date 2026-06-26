@@ -22,23 +22,41 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @GetMapping("/me")
+    public Result<UserVO> getCurrentUser() {
+        UserVO user = userService.getCurrentUser();
+        return Result.success(user);
+    }
+
     @GetMapping("/{id}")
-    public Result<User> getUser(@PathVariable Long id) {
-        User user = userService.getById(id);
+    public Result<UserVO> getUser(@PathVariable Long id) {
+        UserVO user = userService.getById(id);
         return Result.success(user);
     }
 
     @GetMapping
-    public Result<List<User>> searchUsers(
+    public Result<List<UserVO>> searchUsers(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String keyword) {
-        List<User> list = userService.searchUsers(role, keyword);
+        List<UserVO> list = userService.searchUsers(role, keyword);
         return Result.success(list);
     }
 
     @PostMapping
-    public Result<Void> createUser(@RequestBody User user) {
-        userService.save(user);
+    public Result<Void> createUser(@Valid @RequestBody UserDTO userDTO) {
+        userService.createUser(userDTO);
         return Result.success("创建成功", null);
+    }
+
+    @PutMapping("/{id}")
+    public Result<Void> updateUser(@PathVariable Long id, @Valid @RequestBody UserDTO userDTO) {
+        userService.updateUser(id, userDTO);
+        return Result.success("更新成功", null);
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return Result.success("删除成功", null);
     }
 }

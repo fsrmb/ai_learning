@@ -37,6 +37,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e, HttpServletRequest request) {
+        e.printStackTrace(); // 控制台红色堆栈
         log.error("系统异常: uri={}", request.getRequestURI(), e);
         return Result.error(500, "服务器内部错误，请稍后重试");
     }

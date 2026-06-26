@@ -8,7 +8,35 @@ import request from './request'
  * @returns {Promise<Object>} 返回当前用户信息
  */
 export function getCurrentUser() {
-  return request.get('/api/users/me')
+  return request.get('/users/me')
+}
+
+/**
+ * 获取单个用户信息
+ * @param {number} id - 用户 ID
+ * @returns {Promise<Object>} 返回用户信息
+ */
+export function getUserById(id) {
+  return request.get(`/users/${id}`)
+}
+
+/**
+ * 更新用户信息
+ * @param {number} id - 用户 ID
+ * @param {Object} data - 更新数据
+ * @returns {Promise<Object>} 返回更新结果
+ */
+export function updateUser(id, data) {
+  return request.put(`/users/${id}`, data)
+}
+
+/**
+ * 删除用户
+ * @param {number} id - 用户 ID
+ * @returns {Promise<Object>} 返回删除结果
+ */
+export function deleteUser(id) {
+  return request.delete(`/users/${id}`)
 }
 
 /**
@@ -45,7 +73,7 @@ function generateMockUsers(count = 100) {
  * @description 调用后端 API，如果失败则返回 Mock 数据兜底
  */
 export function getUserList(params) {
-  return request.get('/api/users', { params }).catch((error) => {
+  return request.get('/users', { params }).catch((error) => {
     console.warn('API 请求失败，使用 Mock 数据兜底:', error)
     
     // 生成 Mock 数据
@@ -88,5 +116,5 @@ export function getUserList(params) {
  * @returns {Promise<Object>} 返回更新结果
  */
 export function updateUserRole(id, role) {
-  return request.put(`/api/users/${id}/role`, { role })
+  return request.put(`/users/${id}/role`, { role })
 }

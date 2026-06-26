@@ -1,14 +1,6 @@
-// router/index.js - 路由配置
-// 配置应用路由表和全局路由守卫，实现登录状态控制
-
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
 
-/**
- * 路由配置列表
- * - 公共路由：/test、/login（无需登录即可访问）
- * - 私有路由：Layout 及其子路由（需要登录才能访问）
- */
 const routes = [
   {
     path: '/test',
@@ -21,6 +13,12 @@ const routes = [
     name: 'Login',
     component: () => import('../views/Login.vue'),
     meta: { title: '登录' }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Register.vue'),
+    meta: { title: '注册' }
   },
   {
     path: '/',
@@ -56,42 +54,28 @@ const routes = [
   }
 ]
 
-/**
- * 创建路由实例
- * 使用 HTML5 History 模式，去除 URL 中的 # 符号
- */
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-/**
- * 全局路由守卫（前置守卫）
- * @description 在路由跳转前进行登录状态检查：
- *              - 访问登录页：如果已登录则重定向到首页
- *              - 访问其他页：如果未登录则重定向到登录页
- *              - 已登录时：验证 Token 是否有效，无效则登出
- */
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
-  const isLoginPage = to.path === '/login'
+  const isAuthPage = to.path === '/login' || to.path === '/register'
   
-  if (isLoginPage) {
-    if (userStore.isLoggedIn) {
+  if (isAuthPage) {
+    if (userStore.isLoggedIn && userStore.user) {
       next('/home')
     } else {
       next()
     }
   } else {
     if (userStore.isLoggedIn) {
-      // 已登录但用户信息为空时，验证 Token 是否有效
       if (!userStore.user) {
         try {
-          // 调用获取用户信息接口验证 Token
           await userStore.fetchUserInfo()
           next()
         } catch (error) {
-          // Token 无效，登出并跳转登录页
           userStore.logout()
           next('/login')
         }

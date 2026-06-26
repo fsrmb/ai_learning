@@ -4,7 +4,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCurrentUser } from '../api/user'      // 用户信息接口
-import { login as loginApi } from '../api/auth'    // 登录接口
+import { login as loginApi, register as registerApi } from '../api/auth.js'    // 登录和注册接口
 import { setToken, removeToken, getToken } from '../utils/token'  // Token 工具函数
 
 /**
@@ -44,20 +44,16 @@ export const useUserStore = defineStore('user', () => {
    *              如果登录响应包含用户信息则直接使用，否则单独调用用户信息接口
    */
   async function login(data) {
-    // 调用后端登录接口，响应已被拦截器解包为 { token, user }
     const res = await loginApi(data)
     
-    // 将 Token 保存到 Pinia 状态
-    token.value = res.token
+    const loginData = res.data || res
     
-    // 将 Token 持久化到 localStorage，防止页面刷新后登录状态丢失
-    setToken(res.token)
+    token.value = loginData.token
+    setToken(loginData.token)
     
-    // 如果登录响应中包含用户信息，直接使用
-    if (res.user) {
-      user.value = res.user
+    if (loginData.user) {
+      user.value = loginData.user
     } else {
-      // 否则单独调用用户信息接口获取详细信息
       await fetchUserInfo()
     }
   }
@@ -69,11 +65,8 @@ export const useUserStore = defineStore('user', () => {
    *              响应已被拦截器解包为用户对象
    */
   async function fetchUserInfo() {
-    // 调用后端用户信息接口，响应已被拦截器解包为用户对象
     const res = await getCurrentUser()
-    
-    // 将用户信息保存到 Pinia 状态
-    user.value = res
+    user.value = res.data || res
   }
 
   /**
@@ -92,6 +85,19 @@ export const useUserStore = defineStore('user', () => {
     removeToken()
   }
 
+  /**
+   * 用户注册操作
+   * @param {Object} data - 注册表单数据
+   * @param {string} data.username - 用户名
+   * @param {string} data.password - 密码
+   * @param {string} data.email - 邮箱（可选）
+   * @returns {Promise<void>}
+   * @description 调用注册接口，注册成功后返回，不自动登录
+   */
+  async function register(data) {
+    await registerApi(data)
+  }
+
   // 返回所有需要暴露的状态和方法，供组件使用
-  return { user, token, isLoggedIn, isAdmin, login, fetchUserInfo, logout }
+  return { user, token, isLoggedIn, isAdmin, login, fetchUserInfo, logout, register }
 })

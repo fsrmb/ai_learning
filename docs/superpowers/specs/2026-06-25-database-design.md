@@ -43,7 +43,7 @@ skill_tree (1) ────< (N) skill_node
 | status | TINYINT | NOT NULL DEFAULT 1 | 状态：0禁用/1正常 |
 | create_time | DATETIME | NULL | 创建时间 |
 | update_time | DATETIME | NULL | 更新时间 |
-
+| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
 ---
 
 ### 3.2 技能树模块
@@ -280,6 +280,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用/1正常',
     `create_time` DATETIME DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME DEFAULT NULL COMMENT '更新时间',
+    `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_username` (`username`),
     KEY `idx_role` (`role`),

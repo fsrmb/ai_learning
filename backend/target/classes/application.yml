@@ -25,8 +25,8 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 jwt:
-  secret: ai-companion-secret-key-for-jwt-token-generation-2024
-  expiration: 86400000
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1haS1jb21wYW5pb24tcGxhdGZvcm0tMjAyNC1tdWx0aS1tb2R1bGUtcHJvamVjdA==
+  expiration: 86400000    # 24小时（毫秒）
 
 logging:
   level:
