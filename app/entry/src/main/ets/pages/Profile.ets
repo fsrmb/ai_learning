@@ -1,6 +1,9 @@
 import { router } from '@kit.ArkUI'
 import { promptAction } from '@kit.ArkUI'
+import { photoAccessHelper } from '@kit.MediaLibraryKit'
+import { picker } from '@kit.CoreFileKit'
 import { TokenUtil } from '../common/TokenUtil'
+import { AvatarUtil } from '../common/AvatarUtil'
 import { NavBar } from '../components/NavBar'
 import { InfoItem } from '../components/InfoItem'
 import { LoadingView } from '../components/LoadingView'
@@ -13,8 +16,10 @@ struct Profile {
   @State isEditing: boolean = false
   @State loading: boolean = true
   @State saveLoading: boolean = false
+  @State avatarLoading: boolean = false
   @State userInfo: UserVO = new UserVO()
   @State editNickname: string = ''
+  @State avatarPath: string = ''
 
   async aboutToAppear(): Promise<void> {
     await this.loadUserInfo()
@@ -26,7 +31,12 @@ struct Profile {
       const user: UserVO = await AuthApi.getCurrentUser()
       this.userInfo = user
       this.editNickname = user.nickname
-      console.info('Profile: Loaded user info - id:', user.id, 'nickname:', user.nickname)
+      console.info('Profile: Loaded user info - id:', user.id, 'nickname:', user.nickname, 'avatar:', user.avatar)
+      if (user.avatar && AvatarUtil.avatarExists(user.avatar)) {
+        this.avatarPath = user.avatar
+      } else {
+        this.avatarPath = ''
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '获取用户信息失败'
       console.error('Profile: Failed to load user info:', errorMessage)
@@ -36,6 +46,117 @@ struct Profile {
       })
     } finally {
       this.loading = false
+    }
+  }
+
+  private async handleAvatarClick(): Promise<void> {
+    if (this.avatarLoading) {
+      return
+    }
+
+    promptAction.showDialog({
+      title: '选择图片来源',
+      message: '请选择要使用的图片来源',
+      buttons: [
+        {
+          text: '相册',
+          color: '#667eea'
+        },
+        {
+          text: '文件',
+          color: '#667eea'
+        }
+      ]
+    }).then(async (result) => {
+      if (result.index === 0) {
+        await this.selectFromGallery()
+      } else if (result.index === 1) {
+        await this.selectFromFiles()
+      }
+    }).catch((error: Error) => {
+      console.error('Profile: Dialog error:', error)
+    })
+  }
+
+  private async selectFromGallery(): Promise<void> {
+    try {
+      const photoPicker = new photoAccessHelper.PhotoViewPicker()
+      const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions()
+      photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE
+      photoSelectOptions.maxSelectNumber = 1
+
+      const photoSelectResult = await photoPicker.select(photoSelectOptions)
+      if (photoSelectResult.photoUris.length === 0) {
+        return
+      }
+
+      const selectedUri = photoSelectResult.photoUris[0]
+      console.info('Profile: Selected from Gallery - URI:', selectedUri)
+      await this.processAvatar(selectedUri)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '从相册选择失败'
+      console.error('Profile: Failed to select from gallery:', errorMessage)
+      promptAction.showToast({
+        message: errorMessage,
+        duration: 2000
+      })
+    }
+  }
+
+  private async selectFromFiles(): Promise<void> {
+    try {
+      const documentSelectOptions = new picker.DocumentSelectOptions()
+      documentSelectOptions.maxSelectNumber = 1
+
+      const documentPicker = new picker.DocumentViewPicker()
+      const documentSelectResult = await documentPicker.select(documentSelectOptions)
+      if (documentSelectResult.length === 0) {
+        return
+      }
+
+      const selectedUri = documentSelectResult[0]
+      console.info('Profile: Selected from Files - URI:', selectedUri)
+      await this.processAvatar(selectedUri)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '从文件选择失败'
+      console.error('Profile: Failed to select from files:', errorMessage)
+      promptAction.showToast({
+        message: errorMessage,
+        duration: 2000
+      })
+    }
+  }
+
+  private async processAvatar(selectedUri: string): Promise<void> {
+    this.avatarLoading = true
+    promptAction.showToast({
+      message: '正在更新头像...',
+      duration: 1000
+    })
+
+    try {
+      const avatarPath = await AvatarUtil.saveAvatar(selectedUri, this.userInfo.username)
+      this.avatarPath = avatarPath
+
+      const updateRequest = new UpdateUserRequest()
+      updateRequest.avatar = avatarPath
+      await AuthApi.updateUser(updateRequest)
+
+      this.userInfo.avatar = avatarPath
+      promptAction.showToast({
+        message: '头像更新成功',
+        duration: 2000
+      })
+      console.info('Profile: Avatar updated successfully -', avatarPath)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '头像更新失败'
+      console.error('Profile: Failed to process avatar:', errorMessage)
+      promptAction.showToast({
+        message: errorMessage,
+        duration: 2000
+      })
+    } finally {
+      this.avatarLoading = false
     }
   }
 
@@ -81,12 +202,50 @@ struct Profile {
       } else {
         Column({ space: 0 }) {
           Column() {
-            Image($r('app.media.avatar'))
-              .width(100)
-              .height(100)
-              .borderRadius(50)
-              .objectFit(ImageFit.Cover)
-              .backgroundColor('#f0f0f0')
+            Stack() {
+              if (this.avatarPath !== '') {
+                Image(this.avatarPath)
+                  .width(100)
+                  .height(100)
+                  .borderRadius(50)
+                  .objectFit(ImageFit.Cover)
+                  .backgroundColor('#f0f0f0')
+              } else {
+                Image($r('app.media.default_avatar'))
+                  .width(100)
+                  .height(100)
+                  .borderRadius(50)
+                  .objectFit(ImageFit.Cover)
+                  .backgroundColor('#f0f0f0')
+              }
+
+              if (this.avatarLoading) {
+                Column() {
+                  LoadingProgress()
+                    .width(30)
+                    .height(30)
+                    .color('#667eea')
+                }
+                .width(100)
+                .height(100)
+                .borderRadius(50)
+                .backgroundColor('rgba(0,0,0,0.3)')
+                .justifyContent(FlexAlign.Center)
+              }
+
+              Text('更换')
+                .fontSize(12)
+                .fontColor(Color.White)
+                .backgroundColor('rgba(0,0,0,0.5)')
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                .borderRadius(8)
+                .position({ x: 70, y: 70 })
+            }
+            .width(100)
+            .height(100)
+            .onClick(() => {
+              this.handleAvatarClick()
+            })
 
             if (this.isEditing) {
               TextInput({ text: this.editNickname, placeholder: '请输入昵称' })

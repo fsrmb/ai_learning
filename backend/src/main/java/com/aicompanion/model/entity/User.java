@@ -11,6 +11,7 @@ public class User extends BaseEntity {
     private String password;
     private String nickname;
     private String email;
+    private String avatar;
     private String role;
     private Integer status;
     // id、createTime、updateTime、deleted 自动继承

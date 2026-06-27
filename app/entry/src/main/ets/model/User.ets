@@ -42,4 +42,5 @@ export class UpdateUserRequest {
   nickname: string = ''
   email: string = ''
   phone: string = ''
+  avatar: string = ''
 }
