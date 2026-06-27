@@ -1,4 +1,4 @@
-package com.aicompanion.service.impl.arkts;
+package com.aicompanion.service.arkts;
 
 import com.aicompanion.common.util.SecurityUtil;
 import com.aicompanion.mapper.SkillNodeMapper;
@@ -9,7 +9,6 @@ import com.aicompanion.model.entity.SkillTree;
 import com.aicompanion.model.entity.UserSkillProgress;
 import com.aicompanion.model.vo.arkts.SkillNodeProgressVO;
 import com.aicompanion.model.vo.arkts.SkillTreeProgressVO;
-import com.aicompanion.service.arkts.ArkTSSkillTreeService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
