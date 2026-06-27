@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 /**
  * 技能树服务实现类
+ * 管理后台使用，不含用户进度计算
  */
 @Service
 @RequiredArgsConstructor

@@ -5,6 +5,8 @@
     "pages/Profile",
     "pages/Register",
     "pages/DifyChat",
-    "pages/ResumeOptimize"
+    "pages/ResumeOptimize",
+    "pages/SkillTreeList",
+    "pages/SkillTreeDetail"
   ]
 }

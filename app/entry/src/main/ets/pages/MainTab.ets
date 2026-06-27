@@ -10,7 +10,7 @@ struct MainTab {
 
   private tabs: TabItem[] = [
     { name: '首页', icon: '🏠', path: '' },
-    { name: '技能树', icon: '🌳', path: '' },
+    { name: '技能树', icon: '🌳', path: 'pages/SkillTreeList' },
     { name: 'AI 聊天', icon: '💬', path: 'pages/DifyChat' },
     { name: '我的', icon: '👤', path: 'pages/Profile' }
   ]

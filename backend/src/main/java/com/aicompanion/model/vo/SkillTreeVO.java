@@ -26,4 +26,10 @@ public class SkillTreeVO {
      * 节点列表（树形结构）
      */
     private List<SkillNodeVO> nodes;
+    
+    private Integer nodeCount;
+    
+    private Integer completedCount;
+    
+    private Double progress;
 }
