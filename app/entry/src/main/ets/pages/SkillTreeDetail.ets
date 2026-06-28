@@ -2,6 +2,11 @@ import { router } from '@kit.ArkUI'
 import { NavBar } from '../components/NavBar'
 import { SkillTreeApi } from '../http/SkillTreeApi'
 import { SkillTree, SkillNode } from '../model/SkillTree'
+import { TokenUtil } from '../common/TokenUtil'
+
+class SkillTreeDetailParams {
+  id: number = 0
+}
 
 @Entry
 @Component
@@ -9,22 +14,45 @@ struct SkillTreeDetail {
   @State skillTree: SkillTree = new SkillTree()
   @State skillNodes: SkillNode[] = []
   @State isLoading: boolean = false
+  @State treeId: number = 0
+  @State isLoggedIn: boolean = false
 
   aboutToAppear(): void {
-    this.loadSkillTree()
+    this.checkLogin()
+  }
+
+  private async checkLogin(): Promise<void> {
+    try {
+      const hasToken = await TokenUtil.hasToken()
+      if (!hasToken) {
+        router.replaceUrl({ url: 'pages/Login' })
+        return
+      }
+      this.isLoggedIn = true
+      this.extractTreeId()
+      this.loadSkillTree()
+    } catch (err) {
+      router.replaceUrl({ url: 'pages/Login' })
+    }
+  }
+
+  private extractTreeId(): void {
+    const params: SkillTreeDetailParams = router.getParams() as SkillTreeDetailParams
+    if (params) {
+      this.treeId = params.id
+    }
   }
 
   private async loadSkillTree(): Promise<void> {
     this.isLoading = true
     try {
-      const params = new URLSearchParams(decodeURIComponent(router.getParams()?.['url'] || ''))
-      const id = parseInt(params.get('id') || '0')
-      if (id > 0) {
-        this.skillTree = await SkillTreeApi.getSkillTreeDetail(id)
-        this.skillNodes = await SkillTreeApi.getSkillNodeTree(id)
+      if (this.treeId > 0) {
+        this.skillTree = await SkillTreeApi.getSkillTreeDetail(this.treeId)
+        this.skillNodes = await SkillTreeApi.getSkillNodeTree(this.treeId)
       }
     } catch (error) {
-      console.error('SkillTreeDetail: Failed to load skill tree:', error)
+      const errorMessage = error instanceof Error ? error.message : '加载失败'
+      console.error('SkillTreeDetail: Failed to load skill tree:', errorMessage)
     } finally {
       this.isLoading = false
     }
@@ -128,7 +156,7 @@ struct SkillTreeDetail {
                             .fontSize(12)
                             .fontColor(child.userStatus === 'COMPLETED' ? '#4caf50' : '#cccccc')
                         }
-                      })
+                      }, (child: SkillNode) => child.id.toString())
                     }
                     .width('100%')
                     .margin({ top: 8 })
@@ -139,7 +167,7 @@ struct SkillTreeDetail {
                 .backgroundColor('#ffffff')
                 .borderRadius(12)
               }
-            })
+            }, (node: SkillNode) => node.id.toString())
           }
           .width('100%')
         }

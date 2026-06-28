@@ -39,9 +39,6 @@ public class SkillTreeServiceImpl implements SkillTreeService {
         if (skillTree.getStatus() == null) {
             skillTree.setStatus(1);
         }
-        if (skillTree.getSortOrder() == null) {
-            skillTree.setSortOrder(0);
-        }
         skillTreeMapper.insert(skillTree);
         return skillTree.getId();
     }
@@ -95,7 +92,6 @@ public class SkillTreeServiceImpl implements SkillTreeService {
         if (category != null && !category.isEmpty()) {
             wrapper.eq(SkillTree::getCategory, category);
         }
-        wrapper.orderByAsc(SkillTree::getSortOrder);
         
         List<SkillTree> skillTrees = skillTreeMapper.selectList(wrapper);
         return skillTrees.stream().map(tree -> {
@@ -121,9 +117,6 @@ public class SkillTreeServiceImpl implements SkillTreeService {
         }
         if (skillNode.getStatus() == null) {
             skillNode.setStatus(1);
-        }
-        if (skillNode.getSortOrder() == null) {
-            skillNode.setSortOrder(0);
         }
         skillNodeMapper.insert(skillNode);
         return skillNode.getId();
@@ -160,7 +153,6 @@ public class SkillTreeServiceImpl implements SkillTreeService {
                 new LambdaQueryWrapper<SkillNode>()
                         .eq(SkillNode::getTreeId, treeId)
                         .eq(SkillNode::getStatus, 1)
-                        .orderByAsc(SkillNode::getSortOrder)
         );
         
         // 转换为 VO

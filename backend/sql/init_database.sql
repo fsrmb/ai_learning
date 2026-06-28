@@ -1,357 +1,21 @@
-# AI 伴学平台 — 数据库设计规格说明书
-
-## 一、设计概述
-
-- **数据库类型**：MySQL 8.0
-- **数据库名**：`ai_companion`
-- **字符集**：`utf8mb4`
-- **排序规则**：`utf8mb4_unicode_ci`
-- **设计原则**：适度反规范化，在查询热点路径保留必要冗余，减少 JOIN 开销
-
-## 二、实体关系总览
-
-```
-sys_user (1) ────< (N) user_skill_progress >──── (1) skill_node
-                     │
-                     ├──< (N) chat_conversation >────< (N) chat_message
-                     │
-                     ├──< (N) interview_session >────< (N) interview_message
-                     │
-                     ├──< (N) learning_record
-                     │
-                     └──< (N) resume_optimization
-
-skill_tree (1) ────< (N) skill_node
-```
-
-## 三、表结构设计
-
-### 3.1 用户与权限模块
-
-#### sys_user（用户表）— 已存在
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| username | VARCHAR(64) | NOT NULL, UNIQUE | 用户名 |
-| password | VARCHAR(128) | NOT NULL | 加密密码 |
-| nickname | VARCHAR(64) | NULL | 昵称 |
-| email | VARCHAR(128) | NULL | 邮箱 |
-| phone | VARCHAR(20) | NULL | 手机号 |
-| avatar | VARCHAR(255) | NULL | 头像URL |
-| role | VARCHAR(32) | NOT NULL DEFAULT 'STUDENT' | 角色：STUDENT/TEACHER/ADMIN |
-| status | TINYINT | NOT NULL DEFAULT 1 | 状态：0禁用/1正常 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
----
-
-### 3.2 技能树模块
-
-#### skill_tree（技能树表）— 已存在
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| name | VARCHAR(128) | NOT NULL | 技能树名称 |
-| description | VARCHAR(500) | NULL | 描述 |
-| icon | VARCHAR(255) | NULL | 图标 |
-| category | VARCHAR(64) | NOT NULL | 分类：FRONTEND/BACKEND/DATABASE 等 |
-| difficulty_level | TINYINT | NOT NULL DEFAULT 1 | 难度等级 1-5 |
-| status | TINYINT | NOT NULL DEFAULT 1 | 状态：0禁用/1正常 |
-| sort_order | INT | NOT NULL DEFAULT 0 | 排序 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-#### skill_node（技能节点表）— 已存在
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| tree_id | BIGINT | NOT NULL, FK | 所属技能树ID |
-| parent_id | BIGINT | NOT NULL DEFAULT 0 | 父节点ID，0表示根节点 |
-| name | VARCHAR(128) | NOT NULL | 节点名称 |
-| description | VARCHAR(500) | NULL | 节点描述 |
-| node_type | VARCHAR(32) | NOT NULL DEFAULT 'SKILL' | 类型：SKILL/CHECKPOINT/REWARD |
-| required_exp | INT | NOT NULL DEFAULT 0 | 所需经验值 |
-| unlock_condition | VARCHAR(255) | NULL | 解锁条件描述 |
-| reward | VARCHAR(500) | NULL | 奖励内容（JSON格式） |
-| icon | VARCHAR(255) | NULL | 图标 |
-| status | TINYINT | NOT NULL DEFAULT 1 | 状态：0禁用/1正常 |
-| sort_order | INT | NOT NULL DEFAULT 0 | 排序 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-#### user_skill_progress（用户技能进度表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| user_id | BIGINT | NOT NULL, FK | 用户ID |
-| node_id | BIGINT | NOT NULL, FK | 技能节点ID |
-| status | TINYINT | NOT NULL DEFAULT 0 | 状态：0未解锁/1已解锁/2已完成 |
-| current_exp | INT | NOT NULL DEFAULT 0 | 当前经验值 |
-| unlocked_at | DATETIME | NULL | 解锁时间 |
-| completed_at | DATETIME | NULL | 完成时间 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_user_node` UNIQUE(user_id, node_id) — 防止重复进度记录
-- `idx_user_id` (user_id) — 查询用户全部进度
-- `idx_node_id` (node_id) — 查询节点被多少用户完成
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
-#### skill_question（题目库表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| node_id | BIGINT | NOT NULL | 所属技能节点ID |
-| question_text | TEXT | NOT NULL | 题目内容 |
-| options_json | JSON | NOT NULL | 选项JSON数组 |
-| correct_answer | VARCHAR(10) | NOT NULL | 正确答案 |
-| explanation | TEXT | NULL | 答案解析 |
-| difficulty | TINYINT | DEFAULT 3 | 难度等级1-5 |
-| source | VARCHAR(20) | NOT NULL DEFAULT 'AI_GENERATED' | 来源：AI_GENERATED/MANUAL |
-| use_count | INT | DEFAULT 0 | 使用次数 |
-| correct_rate | DECIMAL(5,2) | DEFAULT 0 | 正确率统计 |
-| create_time | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| update_time | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_node_id` (node_id) — 查询节点下的题目
-- `idx_difficulty` (difficulty) — 按难度筛选
-- `idx_source` (source) — 按来源筛选
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
-#### skill_assessment（评估记录表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| user_id | BIGINT | NOT NULL | 用户ID |
-| node_id | BIGINT | NOT NULL | 技能节点ID |
-| assessment_time | DATETIME | NOT NULL | 评估时间 |
-| duration_seconds | INT | DEFAULT 0 | 答题耗时（秒） |
-| total_score | DECIMAL(5,2) | NOT NULL | 本次得分 |
-| pass_threshold | DECIMAL(5,2) | NOT NULL DEFAULT 70.00 | 通过阈值 |
-| passed | TINYINT | NOT NULL | 是否通过：0失败/1通过 |
-| question_count | INT | NOT NULL | 题目数量 |
-| correct_count | INT | NOT NULL | 正确数量 |
-| create_time | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_user_id` (user_id) — 查询用户评估记录
-- `idx_node_id` (node_id) — 查询节点评估记录
-- `idx_assessment_time` (assessment_time) — 按时间排序
-- `idx_passed` (passed) — 筛选通过/未通过记录
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
-#### skill_assessment_detail（答题明细表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| assessment_id | BIGINT | NOT NULL | 评估记录ID |
-| question_id | BIGINT | NOT NULL | 题目ID |
-| user_answer | VARCHAR(10) | NOT NULL | 用户答案 |
-| is_correct | TINYINT | NOT NULL | 是否正确：0错误/1正确 |
-| time_spent_seconds | INT | DEFAULT 0 | 本题耗时（秒） |
-| create_time | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_assessment_id` (assessment_id) — 查询评估的答题明细
-- `idx_question_id` (question_id) — 查询题目被作答情况
-- `idx_is_correct` (is_correct) — 筛选正确/错误答题
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
----
-
-### 3.3 AI 聊天模块
-
-#### chat_conversation（聊天会话表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| user_id | BIGINT | NOT NULL, FK | 用户ID |
-| title | VARCHAR(128) | NULL | 会话标题（首条消息摘要） |
-| dify_conversation_id | VARCHAR(128) | NULL | Dify 平台返回的 conversation_id |
-| status | TINYINT | NOT NULL DEFAULT 1 | 状态：0已结束/1进行中 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_user_id` (user_id) — 查询用户的会话列表
-- `idx_dify_conversation_id` (dify_conversation_id) — 关联 Dify 会话
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
-#### chat_message（聊天消息表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| conversation_id | BIGINT | NOT NULL, FK | 所属会话ID |
-| role | VARCHAR(32) | NOT NULL | 角色：USER/ASSISTANT/SYSTEM |
-| content | TEXT | NOT NULL | 消息内容 |
-| message_type | VARCHAR(32) | NOT NULL DEFAULT 'TEXT' | 类型：TEXT/IMAGE/FILE |
-| dify_message_id | VARCHAR(128) | NULL | Dify 平台消息ID |
-| create_time | DATETIME | NULL | 创建时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_conversation_id` (conversation_id) — 查询会话内消息列表
-- `idx_create_time` (create_time) — 按时间排序
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
----
-
-### 3.4 模拟面试模块
-
-#### interview_session（面试会话表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| user_id | BIGINT | NOT NULL, FK | 用户ID |
-| skill_node_id | BIGINT | NULL, FK | 关联技能节点ID |
-| title | VARCHAR(128) | NOT NULL | 面试标题（如"Java后端模拟面试"） |
-| status | TINYINT | NOT NULL DEFAULT 0 | 状态：0未开始/1进行中/2已完成 |
-| total_score | INT | NULL | 综合总分 0-100 |
-| evaluation | TEXT | NULL | 综合评价文本 |
-| start_time | DATETIME | NULL | 开始时间 |
-| end_time | DATETIME | NULL | 结束时间 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_user_id` (user_id) — 查询用户的面试记录
-- `idx_status` (status) — 筛选进行中的面试
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
-#### interview_message（面试消息表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| session_id | BIGINT | NOT NULL, FK | 所属面试会话ID |
-| role | VARCHAR(32) | NOT NULL | 角色：INTERVIEWER/CANDIDATE |
-| content | TEXT | NOT NULL | 内容（问题或回答） |
-| question_type | VARCHAR(32) | NULL | 题目类型：TECH/BEHAVIOR/ALGORITHM |
-| score | INT | NULL | 该题得分（仅回答消息） |
-| comment | VARCHAR(500) | NULL | 该题点评 |
-| create_time | DATETIME | NULL | 创建时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_session_id` (session_id) — 查询面试问答列表
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
----
-
-### 3.5 学习记录模块
-
-#### learning_record（学习记录表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| user_id | BIGINT | NOT NULL, FK | 用户ID |
-| user_name | VARCHAR(64) | NULL | 用户名（冗余，便于管理后台列表查询） |
-| course_name | VARCHAR(128) | NOT NULL | 课程/内容名称 |
-| course_type | VARCHAR(64) | NOT NULL | 课程类型：PROGRAMMING/MATH/ENGLISH/ALGORITHM/DATABASE |
-| duration | INT | NOT NULL DEFAULT 0 | 学习时长（分钟） |
-| score | INT | NULL | 成绩/得分 |
-| status | VARCHAR(32) | NOT NULL DEFAULT 'IN_PROGRESS' | 状态：COMPLETED/IN_PROGRESS |
-| learn_date | DATE | NOT NULL | 学习日期 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_user_id` (user_id) — 查询用户学习记录
-- `idx_course_type` (course_type) — 按类型筛选
-- `idx_learn_date` (learn_date) — 按日期统计
-- `idx_user_learn_date` (user_id, learn_date) — 用户学习日历统计
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
----
-
-### 3.6 简历优化模块
-
-#### resume_optimization（简历优化记录表）— 新增
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| user_id | BIGINT | NOT NULL, FK | 用户ID |
-| original_file_name | VARCHAR(255) | NOT NULL | 原始文件名 |
-| original_file_url | VARCHAR(255) | NOT NULL | 原始文件URL |
-| optimized_file_url | VARCHAR(255) | NULL | 优化后文件URL |
-| original_score | INT | NULL | 原始简历评分 0-100 |
-| optimized_score | INT | NULL | 优化后评分 0-100 |
-| optimization_type | VARCHAR(32) | NULL | 优化类型：OPTIMIZE(优化)/REWRITE(重写) |
-| suggestions | TEXT | NULL | 优化建议/修改说明（JSON或文本） |
-| optimized_content | MEDIUMTEXT | NULL | 优化后的简历内容（文本版） |
-| status | TINYINT | NOT NULL DEFAULT 0 | 状态：0处理中/1完成/2失败 |
-| create_time | DATETIME | NULL | 创建时间 |
-| update_time | DATETIME | NULL | 更新时间 |
-| deleted | INT | NOT NULL DEFAULT 0 | 删除标志：0未删除/1已删除 |
-
-**索引**：
-- `idx_user_id` (user_id) — 查询用户的简历优化记录
-- `idx_status` (status) — 筛选处理中的任务
-- `idx_deleted` (deleted) — 逻辑删除筛选
-
----
-
-## 四、外键约束建议
-
-本项目采用 **逻辑外键**（代码层面维护关联关系），**不建立物理外键约束**。原因：
-1. MyBatis-Plus 物理删除和逻辑删除场景下，物理外键容易触发级联限制
-2. 便于后续分库分表扩展
-3. 减少数据库层面锁竞争
-
-**代码层面必须保证的关联关系**：
-- `user_skill_progress.user_id` → `sys_user.id`
-- `user_skill_progress.node_id` → `skill_node.id`
-- `skill_node.tree_id` → `skill_tree.id`
-- `chat_conversation.user_id` → `sys_user.id`
-- `chat_message.conversation_id` → `chat_conversation.id`
-- `interview_session.user_id` → `sys_user.id`
-- `interview_session.skill_node_id` → `skill_node.id`
-- `interview_message.session_id` → `interview_session.id`
-- `learning_record.user_id` → `sys_user.id`
-- `resume_optimization.user_id` → `sys_user.id`
-
----
-
-## 五、完整 SQL 建库指令
-
-```sql
 -- ============================================================
 -- AI 伴学平台 — 数据库初始化脚本
 -- 数据库：ai_companion
 -- 字符集：utf8mb4
+-- 创建时间：2026-06-28
 -- ============================================================
 
 -- 1. 创建数据库
+DROP DATABASE IF EXISTS `ai_companion`;
 CREATE DATABASE IF NOT EXISTS `ai_companion`
     DEFAULT CHARACTER SET utf8mb4
     DEFAULT COLLATE utf8mb4_unicode_ci;
 
 USE `ai_companion`;
 
--- 2. 用户表（已存在，此处提供完整DDL便于新环境初始化）
+-- ============================================================
+-- 2. 用户表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `sys_user` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `username` VARCHAR(64) NOT NULL COMMENT '用户名',
@@ -371,7 +35,9 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
+-- ============================================================
 -- 3. 技能树表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `skill_tree` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `name` VARCHAR(128) NOT NULL COMMENT '技能树名称',
@@ -391,7 +57,9 @@ CREATE TABLE IF NOT EXISTS `skill_tree` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能树表';
 
+-- ============================================================
 -- 4. 技能节点表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `skill_node` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `tree_id` BIGINT NOT NULL COMMENT '所属技能树ID',
@@ -412,10 +80,13 @@ CREATE TABLE IF NOT EXISTS `skill_node` (
     KEY `idx_tree_id` (`tree_id`),
     KEY `idx_parent_id` (`parent_id`),
     KEY `idx_status` (`status`),
+    KEY `idx_sort_order` (`sort_order`),
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能节点表';
 
+-- ============================================================
 -- 5. 用户技能进度表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `user_skill_progress` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -434,7 +105,9 @@ CREATE TABLE IF NOT EXISTS `user_skill_progress` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户技能进度表';
 
+-- ============================================================
 -- 6. 题目库表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `skill_question` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `node_id` BIGINT NOT NULL COMMENT '所属技能节点ID',
@@ -456,7 +129,9 @@ CREATE TABLE IF NOT EXISTS `skill_question` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目库表';
 
--- 6. 评估记录表
+-- ============================================================
+-- 7. 评估记录表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `skill_assessment` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -478,7 +153,9 @@ CREATE TABLE IF NOT EXISTS `skill_assessment` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评估记录表';
 
--- 7. 答题明细表
+-- ============================================================
+-- 8. 答题明细表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `skill_assessment_detail` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `assessment_id` BIGINT NOT NULL COMMENT '评估记录ID',
@@ -495,7 +172,9 @@ CREATE TABLE IF NOT EXISTS `skill_assessment_detail` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='答题明细表';
 
--- 8. 聊天会话表
+-- ============================================================
+-- 9. 聊天会话表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `chat_conversation` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -511,7 +190,9 @@ CREATE TABLE IF NOT EXISTS `chat_conversation` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天会话表';
 
--- 9. 聊天消息表
+-- ============================================================
+-- 10. 聊天消息表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `chat_message` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `conversation_id` BIGINT NOT NULL COMMENT '所属会话ID',
@@ -527,7 +208,9 @@ CREATE TABLE IF NOT EXISTS `chat_message` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天消息表';
 
--- 10. 面试会话表
+-- ============================================================
+-- 11. 面试会话表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `interview_session` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -548,7 +231,9 @@ CREATE TABLE IF NOT EXISTS `interview_session` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试会话表';
 
--- 11. 面试消息表
+-- ============================================================
+-- 12. 面试消息表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `interview_message` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `session_id` BIGINT NOT NULL COMMENT '所属面试会话ID',
@@ -564,7 +249,9 @@ CREATE TABLE IF NOT EXISTS `interview_message` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试消息表';
 
--- 12. 学习记录表
+-- ============================================================
+-- 13. 学习记录表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `learning_record` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -586,7 +273,9 @@ CREATE TABLE IF NOT EXISTS `learning_record` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学习记录表';
 
--- 13. 简历优化记录表
+-- ============================================================
+-- 14. 简历优化记录表
+-- ============================================================
 CREATE TABLE IF NOT EXISTS `resume_optimization` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -614,7 +303,7 @@ CREATE TABLE IF NOT EXISTS `resume_optimization` (
 
 -- 1. 插入用户数据（密码均为 123456，BCrypt加密后）
 INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `phone`, `avatar`, `role`, `status`, `create_time`, `update_time`) VALUES
-('admin', '$10$0XuhG3gCM0dYDCEdBjsVuj0TNF03WIukodcEH2tMph9Gii4uckQ6', '管理员', 'admin@example.com', '13800138000', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'ADMIN', 1, '2024-01-01 08:00:00', '2024-01-01 08:00:00'),
+('admin', '$2a$10$sEKxGYjtdUXiMO8SHBHY3ORLKDc4CjVmuHyXLkjU6yjTtY6NMpdra', '管理员', 'admin@example.com', '13800138000', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'ADMIN', 1, '2024-01-01 08:00:00', '2024-01-01 08:00:00'),
 ('zhangsan', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '张三', 'zhangsan@example.com', '13800138001', 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhangsan', 'STUDENT', 1, '2024-01-15 10:30:00', '2024-06-20 14:00:00'),
 ('lisi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '李四', 'lisi@example.com', '13800138002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lisi', 'STUDENT', 1, '2024-02-10 09:15:00', '2024-06-18 16:30:00'),
 ('wangwu', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '王五', 'wangwu@example.com', '13800138003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=wangwu', 'STUDENT', 1, '2024-03-05 11:45:00', '2024-06-15 10:00:00'),
@@ -672,76 +361,43 @@ INSERT INTO `user_skill_progress` (`user_id`, `node_id`, `status`, `current_exp`
 (4, 1, 1, 50, '2024-03-10 09:00:00', NULL, '2024-03-10 09:00:00', '2024-03-20 14:00:00'),
 (4, 2, 1, 30, '2024-03-20 15:00:00', NULL, '2024-03-20 15:00:00', '2024-04-01 10:00:00');
 
--- 5. 插入题目库数据（前端技能节点）
-INSERT INTO `skill_question` (`node_id`, `question_text`, `options_json`, `correct_answer`, `explanation`, `difficulty`, `source`) VALUES
--- HTML 基础题目（node_id=2）
-(2, '以下哪个标签用于定义表格的表头单元格？', '["A. <td>", "B. <th>", "C. <tr>", "D. <table>"]', 'B', '<th>标签用于定义表格的表头单元格，默认文本居中且加粗显示。<td>是普通单元格，<tr>是表格行，<table>是表格容器。', 1, 'AI_GENERATED'),
-(2, 'HTML5 新增的语义化标签中，哪个用于定义导航链接？', '["A. <header>", "B. <nav>", "C. <main>", "D. <section>"]', 'B', '<nav>标签定义导航链接的部分，适合放置网站的主导航。<header>是页面头部，<main>是主要内容区域，<section>是文档的章节。', 1, 'AI_GENERATED'),
-(2, '以下哪个属性可以让表单输入框获得焦点？', '["A. focus", "B. autofocus", "C. autoselect", "D. selected"]', 'B', 'autofocus 属性可以让输入框在页面加载时自动获得焦点。focus 是 JavaScript 方法，不是 HTML 属性。', 2, 'AI_GENERATED'),
--- CSS 基础题目（node_id=3）
-(3, 'CSS 中哪个属性用于设置元素的外边距？', '["A. padding", "B. margin", "C. border", "D. spacing"]', 'B', 'margin 用于设置元素的外边距（元素外部的空间）。padding 是内边距（元素内部的空间），border 是边框。', 1, 'AI_GENERATED'),
-(3, '以下哪个选择器的优先级最高？', '["A. 类选择器", "B. 标签选择器", "C. ID选择器", "D. 伪类选择器"]', 'C', 'CSS 选择器优先级：ID选择器 > 类选择器/伪类选择器 > 标签选择器。内联样式优先级最高。', 2, 'AI_GENERATED'),
-(3, 'Flexbox 中哪个属性用于控制主轴方向？', '["A. align-items", "B. justify-content", "C. flex-direction", "D. flex-wrap"]', 'C', 'flex-direction 控制主轴方向（row 或 column）。justify-content 控制主轴上的对齐方式，align-items 控制交叉轴上的对齐方式。', 2, 'AI_GENERATED'),
--- JavaScript 基础题目（node_id=5）
-(5, '以下哪个方法用于向数组末尾添加元素？', '["A. push()", "B. pop()", "C. shift()", "D. unshift()"]', 'A', 'push() 方法向数组末尾添加一个或多个元素，并返回新长度。pop() 删除末尾元素，shift() 删除首元素，unshift() 向开头添加元素。', 1, 'AI_GENERATED'),
-(5, 'JavaScript 中 == 和 === 的区别是什么？', '["A. 没有区别", "B. == 比较值，=== 比较值和类型", "C. == 比较类型，=== 比较值", "D. == 严格比较，=== 宽松比较"]', 'B', '== 会进行类型转换后比较值，=== 严格比较值和类型都必须相同。建议优先使用 === 避免意外的类型转换。', 2, 'AI_GENERATED'),
-(5, '以下哪个不是 JavaScript 的基本数据类型？', '["A. string", "B. number", "C. array", "D. boolean"]', 'C', 'JavaScript 的基本数据类型包括：string、number、boolean、undefined、null、symbol、bigint。array 是引用类型。', 1, 'AI_GENERATED'),
--- Vue.js 题目（node_id=8）
-(8, 'Vue3 中哪个钩子函数在组件挂载后执行？', '["A. onBeforeMount", "B. onMounted", "C. onCreated", "D. onInit"]', 'B', 'onMounted 在组件挂载到 DOM 后执行，适合进行 DOM 操作或发起网络请求。onBeforeMount 在挂载前执行。', 2, 'AI_GENERATED'),
-(8, 'Vue3 Composition API 中，哪个函数用于创建响应式对象？', '["A. ref()", "B. reactive()", "C. computed()", "D. watch()"]', 'B', 'reactive() 用于创建响应式对象，ref() 用于创建响应式基本类型。computed() 用于计算属性，watch() 用于监听变化。', 2, 'AI_GENERATED'),
-(8, 'Vue 中 v-model 的本质是什么？', '["A. 单向绑定", "B. v-bind 和 v-on 的语法糖", "C. 双向数据流", "D. 事件监听"]', 'B', 'v-model 是 v-bind:value 和 v-on:input 的语法糖，实现表单元素的双向绑定。', 3, 'AI_GENERATED'),
--- Java 基础题目（node_id=11）
-(11, 'Java 中哪个关键字用于定义常量？', '["A. const", "B. final", "C. static", "D. immutable"]', 'B', 'final 关键字用于定义常量（不可修改的变量）。const 是保留关键字但未使用。static 定义静态成员。', 1, 'AI_GENERATED'),
-(11, 'Java 中 == 和 equals() 的区别是什么？', '["A. 没有区别", "B. == 比较引用，equals() 比较内容", "C. == 比较内容，equals() 比较引用", "D. == 用于基本类型，equals() 用于对象"]', 'B', '== 对于对象比较引用地址，对于基本类型比较值。equals() 默认比较引用，重写后可以比较内容（如 String 类）。', 2, 'AI_GENERATED'),
-(11, 'Java 中哪个集合类是线程安全的？', '["A. ArrayList", "B. HashMap", "C. Vector", "D. HashSet"]', 'C', 'Vector 是线程安全的集合类（使用 synchronized 修饰）。ArrayList、HashMap、HashSet 都不是线程安全的。', 2, 'AI_GENERATED'),
--- Spring Boot 题目（node_id=12）
-(12, 'Spring Boot 中哪个注解用于定义配置类？', '["A. @Component", "B. @Configuration", "C. @Service", "D. @Repository"]', 'B', '@Configuration 用于定义配置类，可以包含 @Bean 方法。@Component 是通用组件注解，@Service 和 @Repository 是其特例。', 2, 'AI_GENERATED'),
-(12, 'Spring Boot 自动配置的核心注解是什么？', '["A. @SpringBootApplication", "B. @EnableAutoConfiguration", "C. @ComponentScan", "D. @Configuration"]', 'B', '@EnableAutoConfiguration 是自动配置的核心注解，@SpringBootApplication 是它的组合注解（包含 @EnableAutoConfiguration、@ComponentScan、@Configuration）。', 2, 'AI_GENERATED'),
-(12, 'Spring Boot 中 @Autowired 和 @Resource 的区别是什么？', '["A. 没有区别", "B. @Autowired 按类型注入，@Resource 按名称注入", "C. @Autowired 按名称注入，@Resource 按类型注入", "D. @Autowired 是 Spring 注解，@Resource 是 Java 标准注解"]', 'B', '@Autowired 默认按类型注入，@Resource 默认按名称注入。两者都可以通过 @Qualifier 指定名称。', 3, 'AI_GENERATED');
+-- 5. 插入题目库数据
+INSERT INTO `skill_question` (`node_id`, `question_text`, `options_json`, `correct_answer`, `explanation`, `difficulty`, `source`, `use_count`, `correct_rate`) VALUES
+-- 前端技能树题目
+(2, 'HTML5 中哪个标签用于定义导航链接？', '["A. <nav>", "B. <navigation>", "C. <menu>", "D. <links>"]', 'A', '<nav>标签用于定义导航链接部分，是HTML5新增的语义化标签。', 1, 'MANUAL', 25, 88.00),
+(2, '以下哪个不是 HTML5 新增的语义化标签？', '["A. <article>", "B. <section>", "C. <div>", "D. <footer>"]', 'C', '<div>是HTML4就存在的通用容器标签，不是HTML5新增的。', 2, 'MANUAL', 20, 75.00),
+(3, 'CSS 中哪个属性用于设置元素的宽度？', '["A. width", "B. height", "C. size", "D. dimension"]', 'A', 'width属性用于设置元素的宽度，height用于设置高度。', 1, 'MANUAL', 30, 90.00),
+(3, 'Flexbox 中哪个属性用于设置主轴方向？', '["A. align-items", "B. justify-content", "C. flex-direction", "D. flex-wrap"]', 'C', 'flex-direction属性定义了主轴方向，决定了flex子项的排列方向。', 3, 'MANUAL', 15, 60.00),
+(5, 'JavaScript 中 typeof null 的结果是什么？', '["A. \"null\"", "B. \"undefined\"", "C. \"object\"", "D. \"number\""]', 'C', '这是JavaScript的一个历史遗留bug，typeof null返回"object"。', 3, 'MANUAL', 22, 45.45),
+(5, '以下哪个方法可以将数组转换为字符串？', '["A. toString()", "B. toArray()", "C. join()", "D. A和C都可以"]', 'D', 'toString()将数组转换为逗号分隔的字符串，join()可以指定分隔符。', 2, 'MANUAL', 18, 77.78),
+(8, 'Vue3 中哪个 API 用于创建响应式对象？', '["A. ref", "B. reactive", "C. computed", "D. watch"]', 'B', 'reactive()用于创建响应式对象，ref()用于创建响应式基本类型。', 3, 'MANUAL', 12, 75.00),
+(8, 'Vue3 的 Composition API 中，setup 函数的返回值是什么？', '["A. 模板中使用的数据和方法", "B. 组件实例", "C. 生命周期钩子", "D. 路由配置"]', 'A', 'setup函数返回一个对象，包含模板中使用的数据和方法。', 3, 'MANUAL', 10, 80.00),
+-- 后端技能树题目
+(11, 'Java 中哪个关键字用于定义接口？', '["A. class", "B. interface", "C. implements", "D. extends"]', 'B', 'interface关键字用于定义接口，class定义类，implements实现接口。', 1, 'MANUAL', 28, 92.86),
+(11, 'Java 中 String 是基本类型还是引用类型？', '["A. 基本类型", "B. 引用类型", "C. 既是基本类型也是引用类型", "D. 都不是"]', 'B', 'String是Java的引用类型（类），不是基本类型。基本类型包括：byte, short, int, long, float, double, char, boolean。', 2, 'MANUAL', 24, 87.50),
+(12, 'Spring Boot 中哪个注解用于启用自动配置？', '["A. @SpringBootApplication", "B. @EnableAutoConfiguration", "C. @Configuration", "D. @ComponentScan"]', 'B', '@EnableAutoConfiguration是启用自动配置的核心注解，@SpringBootApplication包含了它。', 3, 'MANUAL', 16, 68.75),
+(12, 'Spring Boot 默认使用哪种数据库连接池？', '["A. HikariCP", "B. Tomcat JDBC", "C. DBCP", "D. C3P0"]', 'A', 'Spring Boot 2.x 默认使用 HikariCP 作为数据库连接池，它是目前最快的连接池。', 3, 'MANUAL', 14, 57.14),
+-- 数据库技能树题目
+(14, 'MySQL 中哪个关键字用于查询数据？', '["A. UPDATE", "B. INSERT", "C. SELECT", "D. DELETE"]', 'C', 'SELECT关键字用于从数据库表中查询数据。', 1, 'MANUAL', 35, 97.14),
+(14, 'MySQL 中哪个索引类型最适合范围查询？', '["A. B-tree", "B. Hash", "C. Full-text", "D. R-tree"]', 'A', 'B-tree索引是MySQL默认的索引类型，支持范围查询、排序等操作。', 3, 'MANUAL', 18, 66.67),
+(16, 'Redis 中哪个命令用于获取字符串类型的值？', '["A. GET", "B. SET", "C. DEL", "D. EXISTS"]', 'A', 'GET命令用于获取指定key的字符串值。', 1, 'MANUAL', 26, 92.31),
+(16, 'Redis 中哪种数据结构最适合实现分布式锁？', '["A. String", "B. Hash", "C. Set", "D. List"]', 'A', '通常使用String类型配合SET NX（不存在时设置）命令实现分布式锁。', 4, 'MANUAL', 12, 50.00);
 
 -- 6. 插入评估记录数据
 INSERT INTO `skill_assessment` (`user_id`, `node_id`, `assessment_time`, `duration_seconds`, `total_score`, `pass_threshold`, `passed`, `question_count`, `correct_count`) VALUES
 -- 张三的评估记录
-(2, 2, '2024-03-01 10:00:00', 300, 80.00, 70.00, 1, 5, 4),
-(2, 3, '2024-03-15 14:00:00', 360, 75.00, 70.00, 1, 5, 4),
-(2, 5, '2024-04-01 10:00:00', 420, 60.00, 70.00, 0, 5, 3),
-(2, 8, '2024-05-10 15:00:00', 480, 85.00, 70.00, 1, 5, 4),
+(2, 2, '2024-02-10 14:00:00', 300, 80.00, 70.00, 1, 5, 4),
+(2, 3, '2024-02-25 16:00:00', 360, 88.00, 70.00, 1, 5, 4),
+(2, 5, '2024-03-10 10:00:00', 420, 72.00, 70.00, 1, 5, 4),
 -- 李四的评估记录
-(3, 2, '2024-03-05 11:00:00', 240, 90.00, 70.00, 1, 5, 5),
-(3, 3, '2024-03-20 16:00:00', 300, 85.00, 70.00, 1, 5, 4),
-(3, 5, '2024-04-10 09:00:00', 360, 70.00, 70.00, 1, 5, 4),
-(3, 11, '2024-05-01 14:00:00', 420, 65.00, 70.00, 0, 5, 3),
--- 王五的评估记录（较少）
-(4, 2, '2024-04-01 10:00:00', 300, 72.00, 70.00, 1, 5, 4);
+(3, 2, '2024-03-05 13:00:00', 280, 90.00, 70.00, 1, 5, 5),
+(3, 3, '2024-03-15 16:00:00', 340, 85.00, 70.00, 1, 5, 4),
+(3, 5, '2024-04-01 10:00:00', 400, 75.00, 70.00, 1, 5, 4),
+(3, 6, '2024-04-10 14:00:00', 450, 68.00, 70.00, 0, 5, 3),
+-- 王五的评估记录
+(4, 2, '2024-04-01 09:00:00', 320, 72.00, 70.00, 1, 5, 4);
 
--- 7. 插入答题明细数据
-INSERT INTO `skill_assessment_detail` (`assessment_id`, `question_id`, `user_answer`, `is_correct`, `time_spent_seconds`) VALUES
--- 评估1：张三 - HTML基础（ID=1）
-(1, 1, 'B', 1, 45),
-(1, 2, 'B', 1, 30),
-(1, 3, 'A', 0, 60),
-(1, 4, 'B', 1, 40),
-(1, 5, 'C', 1, 35),
--- 评估2：张三 - CSS基础（ID=2）
-(2, 6, 'B', 1, 30),
-(2, 7, 'C', 1, 40),
-(2, 8, 'C', 1, 50),
-(2, 9, 'A', 1, 45),
-(2, 10, 'D', 0, 55),
--- 评估3：张三 - JS基础（ID=3）- 未通过
-(3, 11, 'A', 1, 30),
-(3, 12, 'B', 1, 45),
-(3, 13, 'C', 0, 50),
-(3, 14, 'B', 1, 40),
-(3, 15, 'A', 0, 55),
--- 评估4：李四 - HTML基础（ID=5）- 满分
-(5, 1, 'B', 1, 25),
-(5, 2, 'B', 1, 20),
-(5, 3, 'B', 1, 30),
-(5, 4, 'B', 1, 25),
-(5, 5, 'C', 1, 20);
-
--- 8. 插入聊天会话数据
+-- 7. 插入聊天会话数据
 INSERT INTO `chat_conversation` (`user_id`, `title`, `dify_conversation_id`, `status`, `create_time`, `update_time`) VALUES
 (2, '关于 Vue3 响应式原理的讨论', 'dify_conv_001', 0, '2024-05-10 14:00:00', '2024-05-10 15:30:00'),
 (2, 'Spring Boot 面试问题', 'dify_conv_002', 0, '2024-05-15 09:00:00', '2024-05-15 10:00:00'),
@@ -750,7 +406,7 @@ INSERT INTO `chat_conversation` (`user_id`, `title`, `dify_conversation_id`, `st
 (3, '前端框架对比', 'dify_conv_005', 1, '2024-06-18 15:00:00', '2024-06-18 16:00:00'),
 (4, '如何准备秋招', 'dify_conv_006', 0, '2024-06-10 10:00:00', '2024-06-10 11:00:00');
 
--- 9. 插入聊天消息数据
+-- 8. 插入聊天消息数据
 INSERT INTO `chat_message` (`conversation_id`, `role`, `content`, `message_type`, `dify_message_id`, `create_time`) VALUES
 -- 会话1：Vue3 响应式
 (1, 'USER', '你好，我想了解一下 Vue3 的响应式原理', 'TEXT', 'msg_001', '2024-05-10 14:00:00'),
@@ -774,7 +430,7 @@ INSERT INTO `chat_message` (`conversation_id`, `role`, `content`, `message_type`
 (4, 'USER', '我算法比较薄弱，应该怎么学习？', 'TEXT', 'msg_016', '2024-05-18 11:00:00'),
 (4, 'ASSISTANT', '算法学习路径建议：\n1. 基础：数组、链表、栈队列（1-2周）\n2. 核心：哈希表、二叉树、图（2-3周）\n3. 进阶：动态规划、回溯、贪心（3-4周）\n4. 高频：排序、位运算、双指针（持续）\n\n建议按类别刷题，每类掌握 20-30 道高频题即可。', 'TEXT', 'msg_017', '2024-05-18 11:01:00');
 
--- 10. 插入面试会话数据
+-- 9. 插入面试会话数据
 INSERT INTO `interview_session` (`user_id`, `skill_node_id`, `title`, `status`, `total_score`, `evaluation`, `start_time`, `end_time`, `create_time`, `update_time`) VALUES
 (2, 8, 'Vue.js 项目实战面试', 2, 78, '项目经验较丰富，对 Vue3 响应式原理理解深入，但在工程化方面（如 Webpack 配置、CI/CD）经验不足。建议加强前端工程化知识。', '2024-06-15 14:00:00', '2024-06-15 15:00:00', '2024-06-15 14:00:00', '2024-06-15 15:00:00'),
 (2, 12, 'Spring Boot 基础面试', 2, 85, 'Java 基础扎实，Spring Boot 使用熟练，对常见问题（如事务、缓存）有较好理解。表达清晰，回答有条理。', '2024-06-18 10:00:00', '2024-06-18 10:45:00', '2024-06-18 10:00:00', '2024-06-18 10:45:00'),
@@ -782,7 +438,7 @@ INSERT INTO `interview_session` (`user_id`, `skill_node_id`, `title`, `status`, 
 (3, 11, 'Java 基础面试', 2, 70, 'Java 基础概念清晰，但多线程和并发编程是薄弱环节。建议加强 java.util.concurrent 包的学习。', '2024-06-12 14:00:00', '2024-06-12 14:40:00', '2024-06-12 14:00:00', '2024-06-12 14:40:00'),
 (4, NULL, '全栈方向模拟面试', 1, NULL, NULL, '2024-06-20 15:00:00', NULL, '2024-06-20 15:00:00', '2024-06-20 15:00:00');
 
--- 11. 插入面试消息数据
+-- 10. 插入面试消息数据
 INSERT INTO `interview_message` (`session_id`, `role`, `content`, `question_type`, `score`, `comment`, `create_time`) VALUES
 -- 面试1：Vue.js 项目实战
 (1, 'INTERVIEWER', '请介绍一下你做过的 Vue 项目，以及项目的技术架构', 'TECH', 80, '项目介绍清晰，技术选型合理', '2024-06-15 14:00:00'),
@@ -802,7 +458,7 @@ INSERT INTO `interview_message` (`session_id`, `role`, `content`, `question_type
 (3, 'INTERVIEWER', '如何实现一个垂直居中的布局？至少说出 3 种方法', 'TECH', 90, '方法全面，涵盖传统和现代方案', '2024-06-10 09:05:00'),
 (3, 'CANDIDATE', '1) flex + justify-content + align-items 2) grid + place-items: center 3) absolute + transform: translate(-50%, -50%) 4) position + margin auto + top/bottom/left/right: 0', 'TECH', NULL, NULL, '2024-06-10 09:06:00');
 
--- 12. 插入学习记录数据
+-- 11. 插入学习记录数据
 INSERT INTO `learning_record` (`user_id`, `user_name`, `course_name`, `course_type`, `duration`, `score`, `status`, `learn_date`, `create_time`, `update_time`) VALUES
 -- 张三的学习记录
 (2, '张三', 'Vue3 入门教程', 'PROGRAMMING', 120, 92, 'COMPLETED', '2024-05-01', '2024-05-01 10:00:00', '2024-05-05 18:00:00'),
@@ -828,7 +484,7 @@ INSERT INTO `learning_record` (`user_id`, `user_name`, `course_name`, `course_ty
 (5, '赵老师', 'Spring Boot 实战', 'PROGRAMMING', 540, NULL, 'COMPLETED', '2024-05-06', '2024-05-08 17:00:00', '2024-05-08 17:00:00'),
 (5, '赵老师', 'MySQL 优化', 'DATABASE', 300, NULL, 'COMPLETED', '2024-05-12', '2024-05-14 16:00:00', '2024-05-14 16:00:00');
 
--- 13. 插入简历优化记录数据
+-- 12. 插入简历优化记录数据
 INSERT INTO `resume_optimization` (`user_id`, `original_file_name`, `original_file_url`, `optimized_file_url`, `original_score`, `optimized_score`, `optimization_type`, `suggestions`, `optimized_content`, `status`, `create_time`, `update_time`) VALUES
 -- 张三的简历
 (2, 'zhangsan_resume_v1.pdf', 'https://cdn.example.com/resumes/zhangsan_v1.pdf', 'https://cdn.example.com/resumes/zhangsan_v1_optimized.pdf', 65, 88, 'OPTIMIZE', '1. 项目经历描述过于简单，建议用 STAR 法则重写\n2. 缺少技术亮点总结\n3. 教育背景应突出与职位相关的课程\n4. 技能清单应按熟练度分层', '姓名：张三\n手机：138****8001\n邮箱：zhangsan@example.com\n\n求职意向：Java 开发工程师\n\n教育背景\nXX大学 计算机科学与技术 硕士 2022-2025\n- GPA 3.8/4.0，连续三年获得奖学金\n- 主修课程：数据结构、算法设计、操作系统、计算机网络\n\n项目经历\n在线教育平台后端开发（Spring Boot + MySQL）\n2024.03 - 2024.06\n- 负责用户认证模块，采用 JWT + Redis 实现分布式会话管理，支持 10万+ 并发登录\n- 优化数据库查询，通过索引优化和 SQL 重写，将核心接口响应时间从 500ms 降至 50ms\n- 设计并实现消息队列异步处理机制，使用 RabbitMQ 解耦订单和通知系统\n\n技能清单\n- 后端开发：Java (精通)、Spring Boot (精通)、Spring Cloud (熟悉)\n- 数据库：MySQL (精通)、Redis (熟悉)、MongoDB (了解)\n- 工具：Git、Docker、Linux', 1, '2024-06-15 10:00:00', '2024-06-15 14:00:00'),
@@ -836,14 +492,3 @@ INSERT INTO `resume_optimization` (`user_id`, `original_file_name`, `original_fi
 (3, 'lisi_resume_2024.pdf', 'https://cdn.example.com/resumes/lisi_2024.pdf', 'https://cdn.example.com/resumes/lisi_2024_optimized.pdf', 58, 82, 'REWRITE', '1. 简历结构混乱，需要重新梳理\n2. 项目经历与技术栈不匹配\n3. 缺少量化成果数据\n4. 建议增加 GitHub 链接或个人技术博客', '姓名：李四\n手机：138****8002\n邮箱：lisi@example.com\nGitHub: github.com/lisi-dev\n\n求职意向：前端开发工程师\n\n教育背景\nXX大学 软件工程 本科 2020-2024\n- 综合排名 Top 10%，获国家奖学金\n\n专业技能\n- 前端框架：Vue.js (精通)、React (熟悉)\n- 构建工具：Vite、Webpack\n- 其他：TypeScript、Node.js、MySQL\n\n项目经历\n个人博客系统（Vue3 + Nuxt.js）\n2023.09 - 2023.12\n- 独立开发技术博客网站，使用 SSR 提升首屏加载速度，Google PageSpeed 得分 95+\n- 实现 Markdown 编辑器和代码高亮功能，支持 SEO 优化\n- 使用 Vite 构建，Bundle 分析优化后首包体积减少 40%\n\n校园失物招领小程序（微信小程序）\n2023.06 - 2023.08\n- 使用 Taro 框架开发，支持发布、搜索、认领等功能\n- 集成云开发，无需自建后端，降低运维成本 60%', 1, '2024-06-10 09:00:00', '2024-06-10 12:00:00'),
 -- 王五的简历（处理中）
 (4, 'wangwu_resume.pdf', 'https://cdn.example.com/resumes/wangwu.pdf', NULL, NULL, NULL, 'OPTIMIZE', NULL, NULL, 0, '2024-06-20 15:00:00', '2024-06-20 15:00:00');
-```
-
----
-
-## 六、设计决策说明
-
-1. **聊天消息表无主键自增以外的 update_time**：消息为不可变数据，创建后不再修改，因此不需要 update_time。
-2. **面试评价合并到 interview_session**：单次面试只有一个综合评价，以 JSON 文本或字段形式存储在 session 表中，避免额外一张表。若未来需要多维度评分（技术/沟通/思维），可在 evaluation 字段存结构化 JSON。
-3. **learning_record.user_name 冗余**：管理后台学习记录列表页需要展示用户名，若通过 JOIN sys_user 查询，在数据量大时分页性能下降。此冗余字段在用户信息修改时**不强制同步更新**（历史记录保留当时的用户名），符合业务语义。
-4. **resume_optimization 同时保留 file_url 和 content**：file_url 用于下载优化后的简历文件，content 用于在 App 内直接展示文本内容，避免前端需要额外解析文件。
-5. **不使用物理外键**：所有表间关联通过代码层和索引保证，提升扩展性和性能。

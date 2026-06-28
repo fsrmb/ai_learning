@@ -3,6 +3,7 @@ import { promptAction } from '@kit.ArkUI'
 import { SkillTreeApi } from '../http/SkillTreeApi'
 import { SkillTree } from '../model/SkillTree'
 import { NavBar } from '../components/NavBar'
+import { TokenUtil } from '../common/TokenUtil'
 
 @Entry
 @Component
@@ -12,9 +13,24 @@ struct SkillTreeList {
   @State selectedCategory: string = '全部'
   @State isLoading: boolean = false
   @State searchText: string = ''
+  @State isLoggedIn: boolean = false
 
   aboutToAppear(): void {
-    this.loadSkillTrees()
+    this.checkLogin()
+  }
+
+  private async checkLogin(): Promise<void> {
+    try {
+      const hasToken = await TokenUtil.hasToken()
+      if (!hasToken) {
+        router.replaceUrl({ url: 'pages/Login' })
+        return
+      }
+      this.isLoggedIn = true
+      this.loadSkillTrees()
+    } catch (err) {
+      router.replaceUrl({ url: 'pages/Login' })
+    }
   }
 
   private async loadSkillTrees(): Promise<void> {
@@ -43,7 +59,8 @@ struct SkillTreeList {
 
   private handleSkillTreeClick(tree: SkillTree): void {
     router.pushUrl({
-      url: `pages/SkillTreeDetail?id=${tree.id}`
+      url: 'pages/SkillTreeDetail',
+      params: { id: tree.id }
     })
   }
 

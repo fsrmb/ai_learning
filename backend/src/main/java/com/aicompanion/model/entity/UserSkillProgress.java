@@ -5,47 +5,49 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 用户技能进度实体类
+ */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("user_skill_progress")
 public class UserSkillProgress extends BaseEntity {
     
+    /**
+     * 用户ID
+     */
     @TableField("user_id")
     private Long userId;
     
+    /**
+     * 技能节点ID
+     */
     @TableField("node_id")
     private Long nodeId;
     
+    /**
+     * 状态：0未解锁/1已解锁/2已完成
+     */
     @TableField("status")
-    private String status;
+    private Integer status;
     
-    @TableField("unlock_time")
-    private LocalDateTime unlockTime;
+    /**
+     * 当前经验值
+     */
+    @TableField("current_exp")
+    private Integer currentExp;
     
-    @TableField("start_time")
-    private LocalDateTime startTime;
+    /**
+     * 解锁时间
+     */
+    @TableField("unlocked_at")
+    private LocalDateTime unlockedAt;
     
-    @TableField("complete_time")
-    private LocalDateTime completeTime;
-    
-    @TableField("study_duration")
-    private Integer studyDuration;
-    
-    @TableField("best_score")
-    private BigDecimal bestScore;
-    
-    @TableField("latest_score")
-    private BigDecimal latestScore;
-    
-    @TableField("attempt_count")
-    private Integer attemptCount;
-    
-    @TableField("pass_count")
-    private Integer passCount;
-    
-    @TableField("exp_points")
-    private Integer expPoints;
+    /**
+     * 完成时间
+     */
+    @TableField("completed_at")
+    private LocalDateTime completedAt;
 }

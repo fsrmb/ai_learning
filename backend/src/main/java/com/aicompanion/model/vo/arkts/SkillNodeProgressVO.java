@@ -2,7 +2,7 @@ package com.aicompanion.model.vo.arkts;
 
 import lombok.Data;
 
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -23,11 +23,25 @@ public class SkillNodeProgressVO {
     private String reward;
     private String icon;
     
+    /**
+     * 用户状态：LOCKED(未解锁)/UNLOCKED(已解锁)/COMPLETED(已完成)
+     */
     private String userStatus;
-    private BigDecimal bestScore;
-    private BigDecimal latestScore;
-    private Integer attemptCount;
-    private Integer expPoints;
+    
+    /**
+     * 当前经验值
+     */
+    private Integer currentExp;
+    
+    /**
+     * 解锁时间
+     */
+    private LocalDateTime unlockedAt;
+    
+    /**
+     * 完成时间
+     */
+    private LocalDateTime completedAt;
     
     private List<SkillNodeProgressVO> children;
 }
