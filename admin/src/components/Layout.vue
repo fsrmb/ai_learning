@@ -2,7 +2,7 @@
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '200px'" class="aside">
       <div class="logo">
-        <span v-show="!isCollapse">Vue3 管理后台</span>
+        <span v-show="!isCollapse">AI 伴学平台</span>
         <span v-show="isCollapse" class="logo-icon">V</span>
       </div>
       <el-menu
@@ -59,9 +59,11 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { House, User, ArrowLeft, ArrowRight, Document, Folder } from '@element-plus/icons-vue'
+import { useUserStore } from '../stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const isCollapse = ref(false)
 
@@ -99,7 +101,7 @@ const handleLogout = async () => {
         type: 'warning'
       }
     )
-    localStorage.removeItem('token')
+    userStore.logout()
     ElMessage.success('退出成功')
     router.push('/login')
   } catch (error) {
