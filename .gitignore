@@ -3,3 +3,10 @@ dist
 .idea
 views/test1.vue
 views/test.vue
+backend/target
+backend/*.log
+app/entry/build
+app/entry/oh_modules
+app/hvigor-build
+.DS_Store
+*.log

@@ -11,14 +11,21 @@ interface ApiResponse<T> {
 export class HttpClient {
   static async get<T>(path: string): Promise<T> {
     const token = await TokenUtil.getToken()
-    const response = await http.createHttp().request(`${Constants.BASE_URL}${path}`, {
-      method: http.RequestMethod.GET,
-      header: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json'
-      }
-    })
-    return HttpClient.handleResponse<T>(response)
+    const userId = await TokenUtil.getUserId()
+    const httpRequest = http.createHttp()
+    try {
+      const response = await httpRequest.request(`${Constants.BASE_URL}${path}`, {
+        method: http.RequestMethod.GET,
+        header: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+          'X-User-Id': userId.toString()
+        }
+      })
+      return HttpClient.handleResponse<T>(response)
+    } finally {
+      httpRequest.destroy()
+    }
   }
 
   // static async post<T>(path: string, data: object): Promise<T> {
@@ -36,6 +43,7 @@ export class HttpClient {
   static async post<T>(path: string, data: object): Promise<T> {
     // 兼容异步token工具
     const token = await TokenUtil.getToken()
+    const userId = await TokenUtil.getUserId()
     const url = `${Constants.BASE_URL}${path}`
     const httpRequest = http.createHttp()
     try {
@@ -43,7 +51,8 @@ export class HttpClient {
         method: http.RequestMethod.POST,
         header: {
           'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-User-Id': userId.toString()
         },
         extraData: JSON.stringify(data)
       })
@@ -55,27 +64,41 @@ export class HttpClient {
   }
   static async put<T>(path: string, data: object): Promise<T> {
     const token = await TokenUtil.getToken()
-    const response = await http.createHttp().request(`${Constants.BASE_URL}${path}`, {
-      method: http.RequestMethod.PUT,
-      header: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json'
-      },
-      extraData: JSON.stringify(data)
-    })
-    return HttpClient.handleResponse<T>(response)
+    const userId = await TokenUtil.getUserId()
+    const httpRequest = http.createHttp()
+    try {
+      const response = await httpRequest.request(`${Constants.BASE_URL}${path}`, {
+        method: http.RequestMethod.PUT,
+        header: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+          'X-User-Id': userId.toString()
+        },
+        extraData: JSON.stringify(data)
+      })
+      return HttpClient.handleResponse<T>(response)
+    } finally {
+      httpRequest.destroy()
+    }
   }
 
   static async delete<T>(path: string): Promise<T> {
     const token = await TokenUtil.getToken()
-    const response = await http.createHttp().request(`${Constants.BASE_URL}${path}`, {
-      method: http.RequestMethod.DELETE,
-      header: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json'
-      }
-    })
-    return HttpClient.handleResponse<T>(response)
+    const userId = await TokenUtil.getUserId()
+    const httpRequest = http.createHttp()
+    try {
+      const response = await httpRequest.request(`${Constants.BASE_URL}${path}`, {
+        method: http.RequestMethod.DELETE,
+        header: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+          'X-User-Id': userId.toString()
+        }
+      })
+      return HttpClient.handleResponse<T>(response)
+    } finally {
+      httpRequest.destroy()
+    }
   }
 
   private static handleResponse<T>(response: http.HttpResponse): T {
