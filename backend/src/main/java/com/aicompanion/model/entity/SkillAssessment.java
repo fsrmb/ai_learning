@@ -69,4 +69,10 @@ public class SkillAssessment extends BaseEntity {
      */
     @TableField("correct_count")
     private Integer correctCount;
+
+    /**
+     * 难度级别1-5
+     */
+    @TableField("difficulty")
+    private Integer difficulty;
 }

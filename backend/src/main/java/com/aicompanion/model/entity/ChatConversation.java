@@ -38,4 +38,10 @@ public class ChatConversation extends BaseEntity {
      */
     @TableField("status")
     private Integer status;
+
+    /**
+     * 代理类型：CHAT/INTERVIEW/RESUME
+     */
+    @TableField("agent_type")
+    private String agentType;
 }

@@ -143,13 +143,16 @@ CREATE TABLE IF NOT EXISTS `skill_assessment` (
     `passed` TINYINT NOT NULL COMMENT '是否通过：0失败/1通过',
     `question_count` INT NOT NULL COMMENT '题目数量',
     `correct_count` INT NOT NULL COMMENT '正确数量',
+    `difficulty` TINYINT NOT NULL DEFAULT 1 COMMENT '难度级别1-5',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_node_id` (`node_id`),
     KEY `idx_assessment_time` (`assessment_time`),
     KEY `idx_passed` (`passed`),
+    KEY `idx_difficulty` (`difficulty`),
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评估记录表';
 
@@ -164,6 +167,7 @@ CREATE TABLE IF NOT EXISTS `skill_assessment_detail` (
     `is_correct` TINYINT NOT NULL COMMENT '是否正确：0错误/1正确',
     `time_spent_seconds` INT DEFAULT 0 COMMENT '本题耗时（秒）',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
     PRIMARY KEY (`id`),
     KEY `idx_assessment_id` (`assessment_id`),
@@ -181,6 +185,7 @@ CREATE TABLE IF NOT EXISTS `chat_conversation` (
     `title` VARCHAR(128) DEFAULT NULL COMMENT '会话标题',
     `dify_conversation_id` VARCHAR(128) DEFAULT NULL COMMENT 'Dify平台conversation_id',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0已结束/1进行中',
+    `agent_type` VARCHAR(32) DEFAULT 'CHAT' COMMENT '代理类型：CHAT/INTERVIEW/RESUME',
     `create_time` DATETIME DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME DEFAULT NULL COMMENT '更新时间',
     `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
@@ -201,6 +206,7 @@ CREATE TABLE IF NOT EXISTS `chat_message` (
     `message_type` VARCHAR(32) NOT NULL DEFAULT 'TEXT' COMMENT '类型：TEXT/IMAGE/FILE',
     `dify_message_id` VARCHAR(128) DEFAULT NULL COMMENT 'Dify平台消息ID',
     `create_time` DATETIME DEFAULT NULL COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
     PRIMARY KEY (`id`),
     KEY `idx_conversation_id` (`conversation_id`),
@@ -243,6 +249,7 @@ CREATE TABLE IF NOT EXISTS `interview_message` (
     `score` INT DEFAULT NULL COMMENT '该题得分（仅回答消息）',
     `comment` VARCHAR(500) DEFAULT NULL COMMENT '该题点评',
     `create_time` DATETIME DEFAULT NULL COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
     PRIMARY KEY (`id`),
     KEY `idx_session_id` (`session_id`),
@@ -384,18 +391,18 @@ INSERT INTO `skill_question` (`node_id`, `question_text`, `options_json`, `corre
 (16, 'Redis 中哪种数据结构最适合实现分布式锁？', '["A. String", "B. Hash", "C. Set", "D. List"]', 'A', '通常使用String类型配合SET NX（不存在时设置）命令实现分布式锁。', 4, 'MANUAL', 12, 50.00);
 
 -- 6. 插入评估记录数据
-INSERT INTO `skill_assessment` (`user_id`, `node_id`, `assessment_time`, `duration_seconds`, `total_score`, `pass_threshold`, `passed`, `question_count`, `correct_count`) VALUES
--- 张三的评估记录
-(2, 2, '2024-02-10 14:00:00', 300, 80.00, 70.00, 1, 5, 4),
-(2, 3, '2024-02-25 16:00:00', 360, 88.00, 70.00, 1, 5, 4),
-(2, 5, '2024-03-10 10:00:00', 420, 72.00, 70.00, 1, 5, 4),
--- 李四的评估记录
-(3, 2, '2024-03-05 13:00:00', 280, 90.00, 70.00, 1, 5, 5),
-(3, 3, '2024-03-15 16:00:00', 340, 85.00, 70.00, 1, 5, 4),
-(3, 5, '2024-04-01 10:00:00', 400, 75.00, 70.00, 1, 5, 4),
-(3, 6, '2024-04-10 14:00:00', 450, 68.00, 70.00, 0, 5, 3),
--- 王五的评估记录
-(4, 2, '2024-04-01 09:00:00', 320, 72.00, 70.00, 1, 5, 4);
+INSERT INTO `skill_assessment` (`user_id`, `node_id`, `assessment_time`, `duration_seconds`, `total_score`, `pass_threshold`, `passed`, `question_count`, `correct_count`, `difficulty`) VALUES
+-- 张三的评估记录（难度1-3）
+(2, 2, '2024-02-10 14:00:00', 300, 80.00, 70.00, 1, 5, 4, 1),
+(2, 3, '2024-02-25 16:00:00', 360, 88.00, 70.00, 1, 5, 4, 2),
+(2, 5, '2024-03-10 10:00:00', 420, 72.00, 70.00, 1, 5, 4, 3),
+-- 李四的评估记录（难度1-4）
+(3, 2, '2024-03-05 13:00:00', 280, 90.00, 70.00, 1, 5, 5, 1),
+(3, 3, '2024-03-15 16:00:00', 340, 85.00, 70.00, 1, 5, 4, 2),
+(3, 5, '2024-04-01 10:00:00', 400, 75.00, 70.00, 1, 5, 4, 3),
+(3, 6, '2024-04-10 14:00:00', 450, 68.00, 70.00, 0, 5, 3, 4),
+-- 王五的评估记录（难度1）
+(4, 2, '2024-04-01 09:00:00', 320, 72.00, 70.00, 1, 5, 4, 1);
 
 -- 7. 插入聊天会话数据
 INSERT INTO `chat_conversation` (`user_id`, `title`, `dify_conversation_id`, `status`, `create_time`, `update_time`) VALUES
@@ -492,3 +499,30 @@ INSERT INTO `resume_optimization` (`user_id`, `original_file_name`, `original_fi
 (3, 'lisi_resume_2024.pdf', 'https://cdn.example.com/resumes/lisi_2024.pdf', 'https://cdn.example.com/resumes/lisi_2024_optimized.pdf', 58, 82, 'REWRITE', '1. 简历结构混乱，需要重新梳理\n2. 项目经历与技术栈不匹配\n3. 缺少量化成果数据\n4. 建议增加 GitHub 链接或个人技术博客', '姓名：李四\n手机：138****8002\n邮箱：lisi@example.com\nGitHub: github.com/lisi-dev\n\n求职意向：前端开发工程师\n\n教育背景\nXX大学 软件工程 本科 2020-2024\n- 综合排名 Top 10%，获国家奖学金\n\n专业技能\n- 前端框架：Vue.js (精通)、React (熟悉)\n- 构建工具：Vite、Webpack\n- 其他：TypeScript、Node.js、MySQL\n\n项目经历\n个人博客系统（Vue3 + Nuxt.js）\n2023.09 - 2023.12\n- 独立开发技术博客网站，使用 SSR 提升首屏加载速度，Google PageSpeed 得分 95+\n- 实现 Markdown 编辑器和代码高亮功能，支持 SEO 优化\n- 使用 Vite 构建，Bundle 分析优化后首包体积减少 40%\n\n校园失物招领小程序（微信小程序）\n2023.06 - 2023.08\n- 使用 Taro 框架开发，支持发布、搜索、认领等功能\n- 集成云开发，无需自建后端，降低运维成本 60%', 1, '2024-06-10 09:00:00', '2024-06-10 12:00:00'),
 -- 王五的简历（处理中）
 (4, 'wangwu_resume.pdf', 'https://cdn.example.com/resumes/wangwu.pdf', NULL, NULL, NULL, 'OPTIMIZE', NULL, NULL, 0, '2024-06-20 15:00:00', '2024-06-20 15:00:00');
+
+-- ============================================================
+-- 14. AI聊天历史记录表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `ai_chat_history` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `conversation_id` BIGINT DEFAULT NULL COMMENT '会话ID',
+    `query_text` TEXT NOT NULL COMMENT '用户查询文本',
+    `response_text` TEXT DEFAULT NULL COMMENT 'AI响应文本',
+    `model_name` VARCHAR(64) DEFAULT NULL COMMENT '使用的模型名称',
+    `token_count` INT DEFAULT 0 COMMENT '消耗token数量',
+    `duration_ms` INT DEFAULT 0 COMMENT '响应耗时(毫秒)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_conversation_id` (`conversation_id`),
+    KEY `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI聊天历史记录表';
+
+-- 15. 插入AI聊天历史数据
+INSERT INTO `ai_chat_history` (`user_id`, `conversation_id`, `query_text`, `response_text`, `model_name`, `token_count`, `duration_ms`, `create_time`) VALUES
+(2, 1, '你好，我想了解一下 Vue3 的响应式原理', 'Vue3 的响应式系统基于 ES6 的 Proxy 实现。相比 Vue2 的 Object.defineProperty，Proxy 可以劫持整个对象，包括新增属性和数组索引。核心代码在 reactivity 包中，通过 track 和 trigger 函数实现依赖收集和派发更新。', 'deepseek-v4-flash', 156, 850, '2024-05-10 14:00:00'),
+(2, 1, '那 ref 和 reactive 有什么区别？', '主要区别：1. ref 接收基本类型值，通过 .value 访问；reactive 只接收对象。2. ref 在模板中会自动解包，reactive 需要保持响应式对象的引用。3. ref 可以包含对象，内部会调用 reactive 转换。', 'deepseek-v4-flash', 203, 1200, '2024-05-10 14:05:00'),
+(3, 4, '算法学习建议', '学习算法的建议：1. 掌握基础数据结构（链表、树、图等）。2. 按照难度循序渐进，从简单到复杂。3. 刷 LeetCode 题，重点关注高频题。4. 理解时间复杂度和空间复杂度。5. 练习手写代码，不要只看答案。', 'deepseek-v4-flash', 287, 1500, '2024-05-18 11:00:00');
