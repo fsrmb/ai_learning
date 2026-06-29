@@ -103,7 +103,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, updateUser, deleteUser } from '../api/user'
+import { getUserList, updateUser, deleteUser, createUser } from '../api/user'
 
 const searchForm = reactive({
   keyword: '',
@@ -235,6 +235,7 @@ const handleSubmit = async () => {
       try {
         if (userForm.id) {
           await updateUser(userForm.id, {
+            username: userForm.username,
             nickname: userForm.nickname,
             email: userForm.email,
             role: userForm.role,
@@ -242,10 +243,11 @@ const handleSubmit = async () => {
           })
           ElMessage.success('编辑成功')
         } else {
-          await updateUser(null, {
+          await createUser({
             username: userForm.username,
             nickname: userForm.nickname,
             email: userForm.email,
+            password: '123456',
             role: userForm.role,
             status: userForm.status
           })

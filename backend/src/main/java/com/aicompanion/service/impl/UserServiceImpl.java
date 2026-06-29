@@ -163,8 +163,14 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("用户不存在");
         }
         
+        String originalPassword = user.getPassword();
         BeanUtils.copyProperties(userDTO, user);
         user.setId(userId);
+        if (userDTO.getPassword() == null || userDTO.getPassword().isEmpty()) {
+            user.setPassword(originalPassword);
+        } else {
+            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        }
         
         userMapper.updateById(user);
     }

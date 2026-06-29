@@ -39,6 +39,10 @@ export function deleteUser(id) {
   return request.delete(`/users/${id}`)
 }
 
+export function createUser(data) {
+  return request.post('/users', data)
+}
+
 /**
  * 生成 Mock 用户数据
  * @param {number} count - 生成数量
@@ -76,10 +80,8 @@ export function getUserList(params) {
   return request.get('/users', { params }).catch((error) => {
     console.warn('API 请求失败，使用 Mock 数据兜底:', error)
     
-    // 生成 Mock 数据
     const allUsers = generateMockUsers(100)
     
-    // 关键词过滤
     let filtered = [...allUsers]
     if (params.keyword) {
       const keyword = params.keyword.toLowerCase()
@@ -90,22 +92,16 @@ export function getUserList(params) {
       )
     }
     
-    // 角色过滤
     if (params.role) {
       filtered = filtered.filter(user => user.role === params.role)
     }
     
-    // 分页处理
     const page = params.page || 1
     const size = params.size || 10
     const start = (page - 1) * size
     const end = start + size
-    const list = filtered.slice(start, end)
     
-    return {
-      list,
-      total: filtered.length
-    }
+    return filtered.slice(start, end)
   })
 }
 
