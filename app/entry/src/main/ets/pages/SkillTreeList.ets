@@ -4,7 +4,7 @@ import { SkillTreeApi } from '../http/SkillTreeApi'
 import { SkillTree } from '../model/SkillTree'
 import { NavBar } from '../components/NavBar'
 import { TokenUtil } from '../common/TokenUtil'
-
+//技能树列表
 @Entry
 @Component
 struct SkillTreeList {

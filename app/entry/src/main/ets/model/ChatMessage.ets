@@ -1,7 +1,15 @@
 export class ChatMessage {
-  role: string = ''  // 'user' or 'assistant'
+  role: string = ''
   content: string = ''
   timestamp: number = 0
+  isStreaming: boolean = false
+
+  constructor(role?: string, content?: string, isStreaming?: boolean) {
+    if (role) this.role = role
+    if (content) this.content = content
+    if (isStreaming !== undefined) this.isStreaming = isStreaming
+    this.timestamp = Date.now()
+  }
 }
 
 export class ChatRequest {

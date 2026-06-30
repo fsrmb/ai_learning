@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { TokenUtil } from '../common/TokenUtil'
-
+//首页
 @Entry
 @Component
 struct MainTab {
@@ -11,7 +11,7 @@ struct MainTab {
   private tabs: TabItem[] = [
     { name: '首页', icon: '🏠', path: '' },
     { name: '技能树', icon: '🌳', path: 'pages/SkillTreeList' },
-    { name: 'AI 聊天', icon: '💬', path: 'pages/DifyChat' },
+    { name: 'AI 聊天', icon: '💬', path: 'pages/Chat' },
     { name: '我的', icon: '👤', path: 'pages/Profile' }
   ]
 

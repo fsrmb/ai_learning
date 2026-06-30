@@ -32,27 +32,27 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageMapper messageMapper;
 
     private static final int MAX_HISTORY_SIZE = 10;
-    private static final String SYSTEM_PROMPT = """
-            你是"面试审查官"，目的是测试求职者的Java相关的能力。
-            
-            要求：
-            1.提问Java相关的内容，不可超纲
-            2.不要说和回复与面试无关的内容
-            3.接收到求职者的开始信号后再出题
-            4.每次只问一题、根据回答追问
-            5.你公正严明，一丝不苟，求职者回答后会进行评判正确与否
-            
-            """;
 //    private static final String SYSTEM_PROMPT = """
-//            你是"AI伴学助手"，一个面向大学生的智能学习伴侣。
+//            你是"面试审查官"，目的是测试求职者的Java相关的能力。
 //
-//            你的职责：
-//            1. 技术问答：回答编程问题（Java、Spring、数据库、前端等），解释概念时用通俗易懂的语言，配合代码示例
-//            2. 代码审查：审查代码质量，指出潜在问题，提供优化建议和最佳实践
-//            3. 写作助手：优化技术文章结构，修改简历，突出亮点，保持专业但友好的语气
-//            4. 学习规划：根据用户当前水平，提供学习路径和资源推荐
-//            5. 保持友好积极的语气，如果不确定，坦诚说明，不要编造答案
+//            要求：
+//            1.提问Java相关的内容，不可超纲
+//            2.不要说和回复与面试无关的内容
+//            3.接收到求职者的开始信号后再出题
+//            4.每次只问一题、根据回答追问
+//            5.你公正严明，一丝不苟，求职者回答后会进行评判正确与否
+//
 //            """;
+    private static final String SYSTEM_PROMPT = """
+            你是"AI伴学助手"，一个面向大学生的智能学习伴侣。
+
+            你的职责：
+            1. 技术问答：回答编程问题（Java、Spring、数据库、前端等），解释概念时用通俗易懂的语言，配合代码示例
+            2. 代码审查：审查代码质量，指出潜在问题，提供优化建议和最佳实践
+            3. 写作助手：优化技术文章结构，修改简历，突出亮点，保持专业但友好的语气
+            4. 学习规划：根据用户当前水平，提供学习路径和资源推荐
+            5. 保持友好积极的语气，如果不确定，坦诚说明，不要编造答案
+            """;
 
     @Override
     @Transactional
@@ -89,13 +89,17 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    @Transactional
     public void streamMessage(ChatRequestDTO dto, Long userId, Consumer<String> onChunk, Runnable onComplete) {
+        log.info("[ChatServiceImpl] streamMessage called, conversationId={}, userId={}, message={}", 
+                dto.getConversationId(), userId, dto.getMessage().substring(0, Math.min(30, dto.getMessage().length())));
+        
         validateConversation(dto.getConversationId(), userId);
 
-        ChatMessage userMessage = saveUserMessage(dto.getConversationId(), dto.getMessage());
+        saveUserMessageTransactional(dto.getConversationId(), dto.getMessage());
+        log.info("[ChatServiceImpl] user message saved");
         
         List<ChatMessage> history = getMessageHistory(dto.getConversationId());
+        log.info("[ChatServiceImpl] loaded {} history messages", history.size());
         
         StringBuilder fullReply = new StringBuilder();
         
@@ -104,27 +108,30 @@ public class ChatServiceImpl implements ChatService {
                 .build();
         
         try {
+            log.info("[ChatServiceImpl] starting AI streaming...");
             chatClient.prompt()
                     .messages(buildMessages(history, dto.getMessage()))
                     .stream()
                     .content()
-                    .subscribe(
-                            chunk -> {
-                                fullReply.append(chunk);
-                                onChunk.accept(chunk);
-                            },
-                            error -> {
-                                log.error("AI streaming error", error);
-                            },
-                            () -> {
-                                saveAssistantMessage(dto.getConversationId(), fullReply.toString());
-                                updateConversationUpdateTime(dto.getConversationId());
-                                onComplete.run();
-                            }
-                    );
+                    .doOnNext(chunk -> {
+                        log.info("[ChatServiceImpl] received AI chunk: {}", chunk);
+                        fullReply.append(chunk);
+                        onChunk.accept(chunk);
+                    })
+                    .doOnError(error -> {
+                        log.error("[ChatServiceImpl] AI streaming error", error);
+                    })
+                    .doOnComplete(() -> {
+                        log.info("[ChatServiceImpl] AI streaming completed, full reply length={}", fullReply.length());
+                        saveAssistantMessageTransactional(dto.getConversationId(), fullReply.toString());
+                        updateConversationUpdateTimeTransactional(dto.getConversationId());
+                        onComplete.run();
+                    })
+                    .onErrorComplete()
+                    .blockLast();
         } catch (Exception e) {
-            log.error("AI streaming failed", e);
-            throw new BusinessException("AI服务暂时不可用");
+            log.error("[ChatServiceImpl] AI streaming failed", e);
+            onComplete.run();
         }
     }
 
@@ -260,5 +267,20 @@ public class ChatServiceImpl implements ChatService {
         vo.setContent(message.getContent());
         vo.setCreatedAt(message.getCreateTime());
         return vo;
+    }
+
+    @Transactional
+    public void saveUserMessageTransactional(Long conversationId, String content) {
+        saveUserMessage(conversationId, content);
+    }
+
+    @Transactional
+    public void saveAssistantMessageTransactional(Long conversationId, String content) {
+        saveAssistantMessage(conversationId, content);
+    }
+
+    @Transactional
+    public void updateConversationUpdateTimeTransactional(Long conversationId) {
+        updateConversationUpdateTime(conversationId);
     }
 }

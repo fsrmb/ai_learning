@@ -66,11 +66,7 @@ export class DifyChatViewModel {
 
   async sendMessage(content: string): Promise<void> {
     // ① 添加用户消息
-    const userMsg: ChatMessage = {
-      role: 'user',
-      content: content,
-      timestamp: Date.now()
-    }
+    const userMsg: ChatMessage = new ChatMessage('user', content, false)
     this.messages.push(userMsg)
 
     // ② 调用 Dify
@@ -85,11 +81,7 @@ export class DifyChatViewModel {
       }
     } catch (err) {
       console.error('DifyChatViewModel sendMessage failed:', err)
-      const errMsg: ChatMessage = {
-        role: 'assistant',
-        content: `请求失败：${String(err)}`,
-        timestamp: Date.now()
-      }
+      const errMsg: ChatMessage = new ChatMessage('assistant', `请求失败：${String(err)}`, false)
       this.messages.push(errMsg)
     } finally {
       this.sending = false
@@ -106,11 +98,7 @@ export class DifyChatViewModel {
     const result: ChatResult = await this.difyApi.chatBlocking(content, this.conversationId)
     const filteredAnswer = DifyChatViewModel.removeThinkTags(result.answer)
 
-    const aiMsg: ChatMessage = {
-      role: 'assistant',
-      content: filteredAnswer,
-      timestamp: Date.now()
-    }
+    const aiMsg: ChatMessage = new ChatMessage('assistant', filteredAnswer, false)
     this.messages.push(aiMsg)
 
     // 更新会话 ID
@@ -148,11 +136,7 @@ export class DifyChatViewModel {
         
         const filteredContent = DifyChatViewModel.removeThinkTags(this.streamingContent)
         
-        const aiMsg: ChatMessage = {
-          role: 'assistant',
-          content: filteredContent,
-          timestamp: Date.now()
-        }
+        const aiMsg: ChatMessage = new ChatMessage('assistant', filteredContent, false)
         this.messages.push(aiMsg)
         console.log('DifyChatViewModel onComplete, messages count:', this.messages.length)
         
@@ -160,11 +144,7 @@ export class DifyChatViewModel {
       },
       onError: (error: string) => {
         console.error('DifyChatViewModel onError:', error)
-        const errMsg: ChatMessage = {
-          role: 'assistant',
-          content: `请求失败：${error}`,
-          timestamp: Date.now()
-        }
+        const errMsg: ChatMessage = new ChatMessage('assistant', `请求失败：${error}`, false)
         this.messages.push(errMsg)
       }
     }
@@ -230,11 +210,7 @@ export class DifyChatViewModel {
         await this.saveMessagesToStorage(record.conversationId, historyMessages)
       } else {
         // 如果 Dify 没有返回历史消息，显示欢迎提示
-        const welcomeMsg: ChatMessage = {
-          role: 'assistant',
-          content: `欢迎回来！继续"${record.title}"的对话`,
-          timestamp: Date.now()
-        }
+        const welcomeMsg: ChatMessage = new ChatMessage('assistant', `欢迎回来！继续"${record.title}"的对话`, false)
         this.messages.push(welcomeMsg)
       }
     }

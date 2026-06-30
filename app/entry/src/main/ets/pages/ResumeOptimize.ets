@@ -8,7 +8,7 @@ import { webview } from '@kit.ArkWeb'
 import { FileUploadCard } from '../components/FileUploadCard'
 import { ConversationRecord } from '../common/ConversationHistory'
 import GlobalContext from '../common/GlobalContext'
-
+//简历优化
 @Entry
 @Component
 struct ResumeOptimizePage {
