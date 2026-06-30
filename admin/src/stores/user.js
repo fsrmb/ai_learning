@@ -29,7 +29,7 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = computed(() => !!token.value)
   
   /** 判断当前用户是否为管理员，通过检测 user.role 是否为 'admin' */
-  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
   // ---- Actions（操作方法）----
   

@@ -13,5 +13,6 @@ public class AiCompanionApplication {
     
     public static void main(String[] args) {
         SpringApplication.run(AiCompanionApplication.class, args);
+        System.out.println("=== AI 伴学平台启动成功！ ===");
     }
 }
