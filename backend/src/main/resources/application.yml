@@ -12,7 +12,12 @@ spring:
     time-zone: GMT+8
   ai:
     openai:
-      api-key: test-api-key-placeholder
+      base-url: https://api.deepseek.com
+      api-key: ${DEEPSEEK_API_KEY:sk-94f6c5fe948a44a4809126af8ea1336d}
+      chat:
+        options:
+          temperature: 0.7
+          model: deepseek-v4-flash
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
