@@ -36,6 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // 白名单：这些路径不需要认证
     private static final String[] WHITE_LIST = {
             "/api/auth/**",
+            "/api/chat/stream",
+            "/api/chat/stream/test",
             "/doc.html", "/webjars/**", "/v3/api-docs/**",
             "/swagger-ui/**", "/swagger-resources/**",
             "/actuator/**"

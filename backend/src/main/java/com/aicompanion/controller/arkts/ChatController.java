@@ -1,6 +1,7 @@
 package com.aicompanion.controller.arkts;
 
 import com.aicompanion.common.response.Result;
+import com.aicompanion.common.util.JwtUtil;
 import com.aicompanion.model.dto.ChatRequestDTO;
 import com.aicompanion.model.dto.CreateConversationDTO;
 import com.aicompanion.model.vo.arkts.ChatResponseVO;
@@ -9,7 +10,8 @@ import com.aicompanion.model.vo.arkts.MessageVO;
 import com.aicompanion.service.arkts.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -18,16 +20,15 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 @RequestMapping("/api/chat")
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class ChatController {
     
     private final ChatService chatService;
-    private final ChatClient.Builder chatClientBuilder;
+    private final JwtUtil jwtUtil;
 
     private Long getUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -49,87 +50,85 @@ public class ChatController {
         return Result.success(response);
     }
 
-    @PostMapping("/simple")
-    public Result<Map<String, Object>> simpleChat(@RequestBody Map<String, Object> request) {
-        String message = (String) request.get("message");
-        if (message == null || message.trim().isEmpty()) {
-            return Result.error("消息内容不能为空");
-        }
-
-        List<org.springframework.ai.chat.messages.Message> historyMessages = new ArrayList<>();
+    @GetMapping(value = "/stream/test", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamTest() {
+        log.info("[ChatController] streamTest called");
+        SseEmitter emitter = new SseEmitter(300000L);
         
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> history = (List<Map<String, String>>) request.get("history");
-        if (history != null) {
-            for (Map<String, String> item : history) {
-                String role = item.get("role");
-                String content = item.get("content");
-                if ("user".equalsIgnoreCase(role)) {
-                    historyMessages.add(new org.springframework.ai.chat.messages.UserMessage(content));
-                } else if ("assistant".equalsIgnoreCase(role)) {
-                    historyMessages.add(new org.springframework.ai.chat.messages.AssistantMessage(content));
+        new Thread(() -> {
+            try {
+                String[] messages = {"你好", "这是测试", "消息", "[DONE]"};
+                for (String msg : messages) {
+                    log.info("[ChatController] sending test message: {}", msg);
+                    emitter.send(msg);
+                    Thread.sleep(500);
                 }
+                emitter.complete();
+                log.info("[ChatController] streamTest completed");
+            } catch (Exception e) {
+                log.error("[ChatController] streamTest failed", e);
+                emitter.completeWithError(e);
             }
-        }
-
-        historyMessages.add(new org.springframework.ai.chat.messages.UserMessage(message));
-
-        String response = chatClientBuilder.build()
-                .prompt()
-                .system(SYSTEM_PROMPT)
-                .messages(historyMessages)
-                .call()
-                .content();
-
-        return Result.success(Map.of("response", response));
+        }).start();
+        
+        return emitter;
     }
 
-    private static final String SYSTEM_PROMPT = """
-            你是一位专业的Java技术面试官。你的角色是提出问题并评估求职者的回答，而不是直接给出答案。
-            
-            核心职责：
-            1. 主动提问：你负责提出问题，求职者负责回答。不要在求职者回答前给出答案。
-            2. 问题范围：仅限Java基础知识，包括但不限于：变量与数据类型、运算符与表达式、流程控制（if-else、for、while、switch）、数组与字符串、面向对象（封装、继承、多态、抽象、接口）、异常处理、集合框架（List、Set、Map）、泛型、多线程、Java内存模型、常用类库等。
-            3. 单次一题：每次回复只包含一个问题，不要在一个回复中问多个问题。
-            4. 追问策略：
-               - 如果求职者回答正确且完整：提出一个更深入的相关问题
-               - 如果求职者回答错误：指出错误点（简单提示），然后让求职者重新回答
-               - 如果求职者回答不完整：追问缺失的部分
-               - 如果求职者表示不知道：给出简单提示后再次提问
-            5. 语言风格：使用简洁、专业的提问方式，避免冗长。
-            6. 难度递进：从基础问题开始，根据求职者的表现逐步提高难度。
-            
-            对话流程：
-            - 用户说"开始" → 你提出第一个基础问题
-            - 用户回答问题 → 你评估后进行追问或提出下一题
-            
-            注意：你的回复应该是一个问题，而不是答案。只有在指出错误时才简要解释。
-            """;
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamChat(@Valid @RequestBody ChatRequestDTO dto, @RequestHeader(value = "Authorization", required = false) String authorization) {
+        log.info("[ChatController] streamChat called, conversationId={}", dto.getConversationId());
+        SseEmitter emitter = new SseEmitter(300000L);
+        emitter.onCompletion(() -> log.info("[ChatController] emitter completed"));
+        emitter.onTimeout(() -> log.info("[ChatController] emitter timeout"));
+        emitter.onError(e -> log.error("[ChatController] emitter error", e));
+        
+        Long userId = validateTokenAndGetUserId(authorization);
 
-
-    @PostMapping("/stream")
-    public SseEmitter streamChat(@Valid @RequestBody ChatRequestDTO dto) {
-        SseEmitter emitter = new SseEmitter(120000L);
-        Long userId = getUserId();
-
-        CompletableFuture.runAsync(() -> {
+        new Thread(() -> {
             try {
+                log.info("[ChatController] starting streamChat thread, userId={}", userId);
                 chatService.streamMessage(dto, userId,
                         chunk -> {
                             try {
-                                emitter.send(chunk);
+                                log.info("[ChatController] sending chunk: {}", chunk);
+                                emitter.send(SseEmitter.event().data(chunk));
+                                log.info("[ChatController] chunk sent successfully");
                             } catch (IOException e) {
+                                log.error("[ChatController] send chunk failed", e);
                                 emitter.completeWithError(e);
                             }
                         },
-                        () -> emitter.complete()
+                        () -> {
+                            try {
+                                log.info("[ChatController] sending [DONE]");
+                                emitter.send(SseEmitter.event().data("[DONE]"));
+                                log.info("[ChatController] [DONE] sent, completing emitter");
+                            } catch (IOException e) {
+                                log.error("[ChatController] send [DONE] failed", e);
+                                emitter.completeWithError(e);
+                            }
+                            emitter.complete();
+                            log.info("[ChatController] emitter completed");
+                        }
                 );
             } catch (Exception e) {
+                log.error("[ChatController] streamChat thread failed", e);
                 emitter.completeWithError(e);
             }
-        });
+        }).start();
 
         return emitter;
+    }
+
+    private Long validateTokenAndGetUserId(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new RuntimeException("未登录或Token已过期");
+        }
+        String token = authorization.substring(7);
+        if (!jwtUtil.validateToken(token)) {
+            throw new RuntimeException("Token已过期");
+        }
+        return jwtUtil.getUserIdFromToken(token);
     }
 
     @GetMapping("/history/{conversationId}")

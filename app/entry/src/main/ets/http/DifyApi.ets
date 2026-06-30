@@ -380,21 +380,13 @@ export class DifyApi {
         // 提取用户消息
         const query = msg['query'] as string
         if (query) {
-          chatMessages.push({
-            role: 'user',
-            content: query,
-            timestamp: (msg['created_at'] as number) * 1000
-          })
+          chatMessages.push(new ChatMessage('user', query, false))
         }
 
         // 提取 AI 回复
         const answer = msg['answer'] as string
         if (answer) {
-          chatMessages.push({
-            role: 'assistant',
-            content: answer,
-            timestamp: ((msg['created_at'] as number) + 1) * 1000
-          })
+          chatMessages.push(new ChatMessage('assistant', answer, false))
         }
       }
 

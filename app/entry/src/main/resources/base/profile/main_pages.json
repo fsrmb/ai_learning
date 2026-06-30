@@ -8,6 +8,7 @@
     "pages/ResumeOptimize",
     "pages/SkillTreeList",
     "pages/SkillTreeDetail",
-    "pages/AssessmentPage"
+    "pages/AssessmentPage",
+    "pages/Chat"
   ]
 }

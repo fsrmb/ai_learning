@@ -4,7 +4,7 @@ import { Breadcrumb, BreadcrumbItem } from '../components/Breadcrumb'
 import { SkillTreeApi } from '../http/SkillTreeApi'
 import { SkillTree, SkillNode } from '../model/SkillTree'
 import { TokenUtil } from '../common/TokenUtil'
-
+//技能树详情界面
 class SkillTreeDetailParams {
   id: number = 0
 }

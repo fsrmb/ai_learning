@@ -30,21 +30,13 @@ export class ResumeOptimizeViewModel {
    * 调用工作流 API（/v1/workflows/run），工作流内部完成评分→分支→优化
    */
   async sendResume(content: string, fileUri?: string): Promise<void> {
-    const userMsg: ChatMessage = {
-      role: 'user',
-      content: fileUri ? `📎 ${fileUri.split('/').pop()}\n${content}` : content,
-      timestamp: Date.now()
-    }
+    const userMsg: ChatMessage = new ChatMessage('user', fileUri ? `📎 ${fileUri.split('/').pop()}\n${content}` : content, false)
     this.messages.push(userMsg)
 
     this.sending = true
 
     try {
-      const processingMsg: ChatMessage = {
-        role: 'assistant',
-        content: '🔍 正在分析并优化简历...',
-        timestamp: Date.now()
-      }
+      const processingMsg: ChatMessage = new ChatMessage('assistant', '🔍 正在分析并优化简历...', false)
       this.messages.push(processingMsg)
 
       // 调用工作流 API，工作流内部完成所有步骤
@@ -52,11 +44,7 @@ export class ResumeOptimizeViewModel {
 
       this.messages.pop()
 
-      const aiMsg: ChatMessage = {
-        role: 'assistant',
-        content: optimizedResume,
-        timestamp: Date.now()
-      }
+      const aiMsg: ChatMessage = new ChatMessage('assistant', optimizedResume, false)
       this.messages.push(aiMsg)
 
       this.currentTitle = content.substring(0, 20) + (content.length > 20 ? '...' : '')
@@ -67,11 +55,7 @@ export class ResumeOptimizeViewModel {
       const errorMessage: string = error instanceof Error ? error.message : '优化失败'
       console.error(`ResumeOptimizeViewModel sendResume error: ${errorMessage}`)
 
-      const errorMsg: ChatMessage = {
-        role: 'assistant',
-        content: `❌ ${errorMessage}`,
-        timestamp: Date.now()
-      }
+      const errorMsg: ChatMessage = new ChatMessage('assistant', `❌ ${errorMessage}`, false)
       this.messages.push(errorMsg)
     } finally {
       this.sending = false
@@ -97,11 +81,7 @@ export class ResumeOptimizeViewModel {
     }
 
     if (this.messages.length === 0) {
-      const welcomeMsg: ChatMessage = {
-        role: 'assistant',
-        content: `欢迎回来！继续"${record.title}"的简历优化`,
-        timestamp: Date.now()
-      }
+      const welcomeMsg: ChatMessage = new ChatMessage('assistant', `欢迎回来！继续"${record.title}"的简历优化`, false)
       this.messages.push(welcomeMsg)
     }
 
