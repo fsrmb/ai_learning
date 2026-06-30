@@ -11,3 +11,4 @@ app/entry/oh_modules
 app/hvigor-build
 .DS_Store
 *.log
+backend/src/main/resources/application.yml

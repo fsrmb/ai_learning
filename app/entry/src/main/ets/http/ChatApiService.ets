@@ -1,4 +1,5 @@
 import { http } from '@kit.NetworkKit'
+import { util } from '@kit.ArkTS'
 import { Constants } from '../common/Constants'
 import { TokenUtil } from '../common/TokenUtil'
 
@@ -41,6 +42,9 @@ export class ChatApiService {
     })
   }
 
+  /**
+   * SSE 流式聊天请求
+   */
   static async streamChat(
     message: string,
     onData: (chunk: string) => void,
@@ -48,6 +52,7 @@ export class ChatApiService {
     onError: (err: string) => void
   ): Promise<void> {
     console.info('CHAT_SEND:', message.substring(0, 30))
+    
     try {
       const token = await TokenUtil.getToken()
       console.info('CHAT_TOKEN:', token ? token.substring(0, 20) + '...' : 'null')
@@ -63,36 +68,45 @@ export class ChatApiService {
       
       const httpRequest = http.createHttp()
       
+      // HarmonyOS 不支持 SSE 的 dataReceive 事件，使用一次性接收
       try {
         const response = await httpRequest.request(url, {
           method: http.RequestMethod.POST,
           header: {
             'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Accept': 'text/event-stream'
           },
-          extraData: JSON.stringify({ conversationId: ChatApiService.conversationId, message }),
+          extraData: JSON.stringify({ 
+            conversationId: ChatApiService.conversationId, 
+            message 
+          }),
           readTimeout: 300000,
           connectTimeout: 15000
         })
 
         console.info('CHAT_RESPONSE_CODE:', response.responseCode)
+        console.info('CHAT_RESPONSE_HEADERS:', JSON.stringify(response.header))
         
         if (response.responseCode !== 200) {
           onError('请求失败: HTTP ' + response.responseCode)
           return
         }
 
-        // 将响应结果转换为字符串
+        // 将响应转换为字符串
         const resultStr = ChatApiService.resultToString(response.result)
         console.info('CHAT_RESPONSE_LENGTH:', resultStr.length)
         console.info('CHAT_RESPONSE_PREVIEW:', resultStr.substring(0, 200))
 
-        // 解析 SSE 数据
-        ChatApiService.parseSseResponse(resultStr, onData, onComplete)
+        // 解析 SSE 数据并模拟流式显示
+        await ChatApiService.parseSseResponseAndSimulateStream(resultStr, onData)
+        
+        onComplete()
         
       } finally {
         httpRequest.destroy()
       }
+      
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
       console.error('CHAT_ERROR:', errorMsg)
@@ -100,67 +114,110 @@ export class ChatApiService {
     }
   }
 
+  /**
+   * 将 HTTP 响应结果转换为字符串
+   */
   private static resultToString(result: string | Object | ArrayBuffer): string {
     if (typeof result === 'string') {
       return result
     } else if (result instanceof ArrayBuffer) {
-      return ChatApiService.arrayBufferToString(result)
+      return ChatApiService.arrayBufferToUtf8String(result)
     } else {
       return JSON.stringify(result)
     }
   }
 
-  private static parseSseResponse(
+  /**
+   * 解析 SSE 响应并模拟流式显示
+   * 
+   * SSE 协议规范：
+   * - 每个 data: 行代表一段数据
+   * - 同一事件内的多个 data: 行之间用换行符分隔
+   * - 空行表示当前事件结束
+   * - data: 后紧跟一个空格（可选）
+   */
+  private static async parseSseResponseAndSimulateStream(
     sseData: string,
-    onData: (chunk: string) => void,
-    onComplete: () => void
-  ): void {
-    console.info('CHAT_PARSE_START, total length:', sseData.length)
+    onData: (chunk: string) => void
+  ): Promise<void> {
+    console.info('CHAT_PARSE_START, raw data length:', sseData.length)
     
-    // 按行分割
+    // 显示原始数据的前500字符（将换行符转义以便查看）
+    const preview = sseData.substring(0, 500).replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+    console.info('CHAT_PARSE_RAW_PREVIEW:', preview)
+    
+    let fullText = ''
+    let currentEventData = ''
     const lines = sseData.split(/\r?\n/)
-    console.info('CHAT_PARSE_LINES:', lines.length)
     
-    let chunkCount = 0
+    console.info('CHAT_PARSE_LINES_COUNT:', lines.length)
+    
     for (const line of lines) {
-      const trimmedLine = line.trim()
-      
-      if (trimmedLine === '') continue
-      
-      console.info('CHAT_LINE:', trimmedLine)
-      
-      if (trimmedLine.startsWith('data:')) {
-        let content = trimmedLine.substring(5).trim()
-        console.info('CHAT_SSE_DATA:', content)
+      if (line.startsWith('data:')) {
+        // SSE 规范：data: 后可能有一个空格，去掉它
+        let content = line.substring(5)
+        if (content.startsWith(' ')) {
+          content = content.substring(1)
+        }
         
+        // 检查是否是结束标记
         if (content === '[DONE]') {
-          console.info('CHAT_DONE')
-          onComplete()
-          return
+          if (currentEventData) {
+            fullText += currentEventData
+          }
+          console.info('CHAT_DONE_RECEIVED')
+          break
         }
         
-        // 去掉首尾引号（如果存在）
-        if (content.startsWith('"') && content.endsWith('"')) {
-          content = content.slice(1, -1)
+        // 同一事件内的多个 data: 行之间用换行符连接
+        if (currentEventData) {
+          currentEventData += '\n'
         }
+        currentEventData += content
         
-        if (content) {
-          chunkCount++
-          onData(content)
+      } else if (line === '') {
+        // 空行表示当前事件结束
+        if (currentEventData) {
+          fullText += currentEventData
+          currentEventData = ''
         }
       }
     }
     
-    console.info('CHAT_PARSE_COMPLETE, chunks:', chunkCount)
-    onComplete()
+    // 处理最后一个事件（可能没有空行结尾）
+    if (currentEventData) {
+      fullText += currentEventData
+    }
+    
+    console.info('CHAT_PARSE_COMPLETE, full text length:', fullText.length)
+    console.info('CHAT_FULL_TEXT_PREVIEW:', fullText.substring(0, 150))
+    
+    // 检查换行符情况
+    const newlineCount = (fullText.match(/\n/g) || []).length
+    console.info('CHAT_FULL_TEXT_NEWLINE_COUNT:', newlineCount)
+    
+    const chars = fullText.split('')
+    console.info('CHAT_TOTAL_CHARS:', chars.length)
+    
+    for (let i = 0; i < chars.length; i++) {
+      onData(chars[i])
+      
+      if (i < chars.length - 1) {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => { resolve() }, 30)
+        })
+      }
+    }
+    
+    console.info('CHAT_SIMULATE_STREAM_COMPLETE')
   }
 
-  private static arrayBufferToString(buffer: ArrayBuffer): string {
+  /**
+   * ArrayBuffer 转 UTF-8 字符串（支持中文）
+   */
+  private static arrayBufferToUtf8String(buffer: ArrayBuffer): string {
     const uint8Array = new Uint8Array(buffer)
-    let result = ''
-    for (let i = 0; i < uint8Array.length; i++) {
-      result += String.fromCharCode(uint8Array[i])
-    }
-    return result
+    const textDecoder: util.TextDecoder = new util.TextDecoder('utf-8')
+    return textDecoder.decodeToString(uint8Array)
   }
 }

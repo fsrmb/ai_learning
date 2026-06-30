@@ -278,7 +278,7 @@ router.replaceUrl({ url: 'pages/MainTab' })
 9. **接口地址不要硬编码**，统一使用 `Constants.BASE_URL` + 路径
 10. **Token 操作不要直接读写 Preferences**，统一使用 `TokenUtil` 
 11. **不要随便删掉注释，部分代码块需要加上注释**
-工具类
+12. **使用组件时，必须考虑导入方式，避免循环导入或重复导入**
 
 ---
 

@@ -10,6 +10,10 @@ struct Chat {
   @State inputText: string = ''
   @State isStreaming: boolean = false
   @State streamingContent: string = ''
+  
+  private scroller: Scroller = new Scroller()
+  
+  private lastUpdateTime: number = 0
 
   build() {
     Column() {
@@ -20,25 +24,26 @@ struct Chat {
       .width('100%').height(56).backgroundColor('#4A90D9')
       .justifyContent(FlexAlign.Center)
 
-      List() {
+      List({ scroller: this.scroller }) {
         ForEach(this.messages, (msg: ChatMessage) => {
           ListItem() {
             if (msg.role === 'user') {
-              Row() {
-                Blank()
+              Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.End }) {
                 Column() {
                   Text(msg.content)
-                    .fontSize(16)
+                    .fontSize(18)
                     .fontColor('#FFFFFF')
-                    .padding(12)
-                    .borderRadius(16)
+                    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+                    .borderRadius(18)
                     .backgroundColor('#4A90D9')
                 }
+                .width('auto')
+                .constraintSize({ maxWidth: '75%' })
               }
               .width('100%')
-              .padding({ left: 60, right: 12, top: 8, bottom: 8 })
+              .padding({ left: 16, right: 12, top: 4, bottom: 4 })
             } else {
-              Row() {
+              Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.Start }) {
                 Column() {
                   Web({
                     src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(msg.content))}`,
@@ -49,50 +54,45 @@ struct Chat {
                     .overScrollMode(OverScrollMode.NEVER)
                     .width('100%')
                     .backgroundColor('#F0F0F0')
-                    .borderRadius(16)
+                    .borderRadius(18)
                     .javaScriptAccess(true)
                     .zoomAccess(false)
-                    .padding(12)
+                    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
                 }
-                .width('70%')
+                .width('75%')
+                .borderRadius(18)
+                .backgroundColor('#F0F0F0')
               }
               .width('100%')
-              .padding({ left: 12, right: 60, top: 8, bottom: 8 })
+              .padding({ left: 12, right: 16, top: 4, bottom: 4 })
             }
           }
         })
 
         if (this.isStreaming) {
           ListItem() {
-            Row() {
+            Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.Start }) {
               Column() {
-                if (this.streamingContent) {
-                  Web({
-                    src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(this.streamingContent))}`,
-                    controller: new webview.WebviewController(),
-                    renderMode: RenderMode.SYNC_RENDER
-                  })
-                    .layoutMode(WebLayoutMode.FIT_CONTENT)
-                    .overScrollMode(OverScrollMode.NEVER)
-                    .width('100%')
-                    .backgroundColor('#F0F0F0')
-                    .borderRadius(16)
-                    .javaScriptAccess(true)
-                    .zoomAccess(false)
-                    .padding(12)
-                } else {
-                  Text('💭 AI 正在思考...')
-                    .fontSize(14)
-                    .fontColor('#999')
-                    .padding(12)
-                    .backgroundColor('#F0F0F0')
-                    .borderRadius(16)
-                }
+                Web({
+                  src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(this.streamingContent))}`,
+                  controller: new webview.WebviewController(),
+                  renderMode: RenderMode.SYNC_RENDER
+                })
+                  .layoutMode(WebLayoutMode.FIT_CONTENT)
+                  .overScrollMode(OverScrollMode.NEVER)
+                  .width('100%')
+                  .backgroundColor('#F0F0F0')
+                  .borderRadius(18)
+                  .javaScriptAccess(true)
+                  .zoomAccess(false)
+                  .padding({ left: 16, right: 16, top: 12, bottom: 12 })
               }
-              .width('70%')
+              .width('75%')
+              .borderRadius(18)
+              .backgroundColor('#F0F0F0')
             }
             .width('100%')
-            .padding({ left: 12, right: 60, top: 8, bottom: 8 })
+            .padding({ left: 12, right: 16, top: 4, bottom: 4 })
           }
         }
       }
@@ -122,11 +122,24 @@ struct Chat {
     this.inputText = ''
     this.isStreaming = true
     this.streamingContent = ''
+    this.lastUpdateTime = 0
+
+    setTimeout(() => {
+      this.scroller.scrollToIndex(this.messages.length - 1)
+    }, 100)
 
     ChatApiService.streamChat(
       userMsg,
       (chunk: string) => {
         this.streamingContent += chunk
+        
+        const now = Date.now()
+        if (now - this.lastUpdateTime >= 100) {
+          this.lastUpdateTime = now
+          setTimeout(() => {
+            this.scroller.scrollToIndex(this.messages.length)
+          }, 50)
+        }
       },
       () => {
         if (this.streamingContent) {
@@ -134,11 +147,17 @@ struct Chat {
         }
         this.streamingContent = ''
         this.isStreaming = false
+        setTimeout(() => {
+          this.scroller.scrollToIndex(this.messages.length - 1)
+        }, 200)
       },
       (err: string) => {
         this.messages.push(new ChatMessage('assistant', 'AI 暂时无法回复：' + err, false))
         this.streamingContent = ''
         this.isStreaming = false
+        setTimeout(() => {
+          this.scroller.scrollToIndex(this.messages.length - 1)
+        }, 200)
       }
     )
   }
