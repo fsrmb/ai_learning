@@ -1,5 +1,7 @@
 import { ChatApiService } from '../http/ChatApiService'
 import { ChatMessage } from '../model/ChatMessage'
+import { MarkdownUtil } from '../common/MarkdownUtil'
+import { webview } from '@kit.ArkWeb'
 
 @Entry
 @Component
@@ -21,35 +23,80 @@ struct Chat {
       List() {
         ForEach(this.messages, (msg: ChatMessage) => {
           ListItem() {
-            Row() {
-              Text(msg.content)
-                .fontSize(16)
-                .fontColor(msg.role === 'user' ? '#FFFFFF' : '#333333')
-                .padding(12)
-                .backgroundColor(msg.role === 'user' ? '#4A90D9' : '#F0F0F0')
-                .borderRadius(16)
+            if (msg.role === 'user') {
+              Row() {
+                Blank()
+                Column() {
+                  Text(msg.content)
+                    .fontSize(16)
+                    .fontColor('#FFFFFF')
+                    .padding(12)
+                    .borderRadius(16)
+                    .backgroundColor('#4A90D9')
+                }
+              }
+              .width('100%')
+              .padding({ left: 60, right: 12, top: 8, bottom: 8 })
+            } else {
+              Row() {
+                Column() {
+                  Web({
+                    src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(msg.content))}`,
+                    controller: new webview.WebviewController(),
+                    renderMode: RenderMode.SYNC_RENDER
+                  })
+                    .layoutMode(WebLayoutMode.FIT_CONTENT)
+                    .overScrollMode(OverScrollMode.NEVER)
+                    .width('100%')
+                    .backgroundColor('#F0F0F0')
+                    .borderRadius(16)
+                    .javaScriptAccess(true)
+                    .zoomAccess(false)
+                    .padding(12)
+                }
+                .width('70%')
+              }
+              .width('100%')
+              .padding({ left: 12, right: 60, top: 8, bottom: 8 })
             }
-            .width('100%')
-            .justifyContent(msg.role === 'user' ? FlexAlign.End : FlexAlign.Start)
           }
         })
 
         if (this.isStreaming) {
           ListItem() {
             Row() {
-              Text(this.streamingContent || '思考中...')
-                .fontSize(16)
-                .fontColor('#333333')
-                .padding(12)
-                .backgroundColor('#F0F0F0')
-                .borderRadius(16)
-              Blank()
+              Column() {
+                if (this.streamingContent) {
+                  Web({
+                    src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(this.streamingContent))}`,
+                    controller: new webview.WebviewController(),
+                    renderMode: RenderMode.SYNC_RENDER
+                  })
+                    .layoutMode(WebLayoutMode.FIT_CONTENT)
+                    .overScrollMode(OverScrollMode.NEVER)
+                    .width('100%')
+                    .backgroundColor('#F0F0F0')
+                    .borderRadius(16)
+                    .javaScriptAccess(true)
+                    .zoomAccess(false)
+                    .padding(12)
+                } else {
+                  Text('💭 AI 正在思考...')
+                    .fontSize(14)
+                    .fontColor('#999')
+                    .padding(12)
+                    .backgroundColor('#F0F0F0')
+                    .borderRadius(16)
+                }
+              }
+              .width('70%')
             }
             .width('100%')
+            .padding({ left: 12, right: 60, top: 8, bottom: 8 })
           }
         }
       }
-      .layoutWeight(1).width('100%').padding(16)
+      .layoutWeight(1).width('100%')
 
       Row() {
         TextInput({ placeholder: '输入你的问题...', text: this.inputText })
