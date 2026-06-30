@@ -15,6 +15,29 @@ struct Chat {
   
   private lastUpdateTime: number = 0
 
+  // 清理文本中的非法 URI 字符
+  private sanitizeForUri(text: string): string {
+    try {
+      encodeURIComponent(text)
+      return text
+    } catch (e) {
+      return text
+        .replace(/%[0-9A-Fa-f]{2}/g, ' ')
+        .replace(/[^\x00-\x7F]/g, '?')
+    }
+  }
+
+  // 获取安全的 WebView HTML 源码
+  private getSafeWebSrc(content: string): string {
+    try {
+      const html = MarkdownUtil.toHtmlWithCustomStyle(content)
+      return `data:text/html,${encodeURIComponent(html)}`
+    } catch (e) {
+      const safeText = this.sanitizeForUri(content)
+      return `data:text/html,${encodeURIComponent(`<html><body style="font-family:sans-serif;padding:12px;">${safeText}</body></html>`)}`
+    }
+  }
+
   build() {
     Column() {
       Row() {
@@ -46,7 +69,7 @@ struct Chat {
               Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.Start }) {
                 Column() {
                   Web({
-                    src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(msg.content))}`,
+                    src: this.getSafeWebSrc(msg.content),
                     controller: new webview.WebviewController(),
                     renderMode: RenderMode.SYNC_RENDER
                   })
@@ -74,7 +97,7 @@ struct Chat {
             Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.Start }) {
               Column() {
                 Web({
-                  src: `data:text/html,${encodeURIComponent(MarkdownUtil.toHtmlWithCustomStyle(this.streamingContent))}`,
+                  src: this.getSafeWebSrc(this.streamingContent),
                   controller: new webview.WebviewController(),
                   renderMode: RenderMode.SYNC_RENDER
                 })

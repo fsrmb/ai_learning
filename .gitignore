@@ -12,3 +12,4 @@ app/hvigor-build
 .DS_Store
 *.log
 backend/src/main/resources/application.yml
+app/entry/src/main/ets/common/EnvConfig.local.ets
