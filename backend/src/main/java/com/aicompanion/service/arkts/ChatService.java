@@ -19,4 +19,6 @@ public interface ChatService {
     List<MessageVO> getMessageHistory(Long conversationId, Long userId, Integer page, Integer size);
     
     List<ConversationVO> getConversations(Long userId);
+    
+    void deleteConversation(Long conversationId, Long userId);
 }

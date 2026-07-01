@@ -2,6 +2,7 @@ package com.aicompanion.mapper;
 
 import com.aicompanion.model.entity.ChatMessage;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -14,4 +15,7 @@ public interface ChatMessageMapper extends BaseMapper<ChatMessage> {
 
     @Select("SELECT COUNT(*) FROM chat_message WHERE conversation_id = #{conversationId} AND deleted = 0")
     int countByConversationId(Long conversationId);
+
+    @Delete("DELETE FROM chat_message WHERE conversation_id = #{conversationId}")
+    void deleteByConversationId(Long conversationId);
 }

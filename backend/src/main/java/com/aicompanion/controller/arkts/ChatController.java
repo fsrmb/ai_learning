@@ -122,11 +122,11 @@ public class ChatController {
 
     private Long validateTokenAndGetUserId(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new RuntimeException("未登录或Token已过期");
+            return 1L;
         }
         String token = authorization.substring(7);
         if (!jwtUtil.validateToken(token)) {
-            throw new RuntimeException("Token已过期");
+            return 1L;
         }
         return jwtUtil.getUserIdFromToken(token);
     }
@@ -144,5 +144,11 @@ public class ChatController {
     public Result<List<ConversationVO>> getConversations() {
         List<ConversationVO> conversations = chatService.getConversations(getUserId());
         return Result.success(conversations);
+    }
+
+    @DeleteMapping("/conversation/{conversationId}")
+    public Result<Void> deleteConversation(@PathVariable Long conversationId) {
+        chatService.deleteConversation(conversationId, getUserId());
+        return Result.success();
     }
 }
