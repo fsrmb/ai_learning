@@ -159,6 +159,14 @@ public class ChatServiceImpl implements ChatService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public void deleteConversation(Long conversationId, Long userId) {
+        validateConversation(conversationId, userId);
+        messageMapper.deleteByConversationId(conversationId);
+        conversationMapper.deleteById(conversationId);
+    }
+
     private void validateConversation(Long conversationId, Long userId) {
         if (conversationId == null) {
             throw new BusinessException("缺少会话ID");

@@ -13,6 +13,27 @@ interface CreateConversationResult {
   message?: string
 }
 
+interface ConversationVO {
+  conversationId: number
+  title: string
+  agentType: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface MessageVO {
+  id: number
+  role: string
+  content: string
+  createdAt: string
+}
+
+interface ApiResult<T> {
+  code: number
+  data: T
+  message?: string
+}
+
 export class ChatApiService {
   private static conversationId: number = 0
 
@@ -96,7 +117,17 @@ export class ChatApiService {
         // 将响应转换为字符串
         const resultStr = ChatApiService.resultToString(response.result)
         console.info('CHAT_RESPONSE_LENGTH:', resultStr.length)
-        console.info('CHAT_RESPONSE_PREVIEW:', resultStr.substring(0, 200))
+        console.info('CHAT_RESPONSE_PREVIEW:', resultStr.substring(0, 300))
+
+        // 检查是否是 SSE 格式（以 data: 开头）
+        const isSse = resultStr.startsWith('data:')
+        console.info('CHAT_IS_SSE_FORMAT:', isSse)
+        
+        if (!isSse) {
+          console.error('CHAT_ERROR: Not SSE format, raw response:', resultStr.substring(0, 500))
+          onError('服务端返回格式错误')
+          return
+        }
 
         // 解析 SSE 数据并模拟流式显示
         await ChatApiService.parseSseResponseAndSimulateStream(resultStr, onData)
@@ -147,46 +178,25 @@ export class ChatApiService {
     console.info('CHAT_PARSE_RAW_PREVIEW:', preview)
     
     let fullText = ''
-    let currentEventData = ''
     const lines = sseData.split(/\r?\n/)
     
     console.info('CHAT_PARSE_LINES_COUNT:', lines.length)
     
     for (const line of lines) {
       if (line.startsWith('data:')) {
-        // SSE 规范：data: 后可能有一个空格，去掉它
         let content = line.substring(5)
         if (content.startsWith(' ')) {
           content = content.substring(1)
         }
         
-        // 检查是否是结束标记
         if (content === '[DONE]') {
-          if (currentEventData) {
-            fullText += currentEventData
-          }
           console.info('CHAT_DONE_RECEIVED')
           break
         }
         
-        // 同一事件内的多个 data: 行之间用换行符连接
-        if (currentEventData) {
-          currentEventData += '\n'
-        }
-        currentEventData += content
-        
-      } else if (line === '') {
-        // 空行表示当前事件结束
-        if (currentEventData) {
-          fullText += currentEventData
-          currentEventData = ''
-        }
+        fullText += content
+        console.info('CHAT_PARSE_CHUNK:', content)
       }
-    }
-    
-    // 处理最后一个事件（可能没有空行结尾）
-    if (currentEventData) {
-      fullText += currentEventData
     }
     
     console.info('CHAT_PARSE_COMPLETE, full text length:', fullText.length)
@@ -219,5 +229,110 @@ export class ChatApiService {
     const uint8Array = new Uint8Array(buffer)
     const textDecoder: util.TextDecoder = new util.TextDecoder('utf-8')
     return textDecoder.decodeToString(uint8Array)
+  }
+
+  /**
+   * 获取所有历史会话列表
+   */
+  static async getConversations(): Promise<ConversationVO[]> {
+    const token = await TokenUtil.getToken()
+    const url = Constants.BASE_URL + '/api/chat/conversations'
+
+    return new Promise((resolve, reject) => {
+      http.createHttp().request(url, {
+        method: http.RequestMethod.GET,
+        header: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        connectTimeout: 15000
+      }).then((response: http.HttpResponse) => {
+        const result = JSON.parse(response.result as string) as ApiResult<ConversationVO[]>
+        if (result.code === 200) {
+          resolve(result.data)
+        } else {
+          reject(result.message || '获取会话列表失败')
+        }
+      }).catch((err:Error) => {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        reject(errorMsg || '获取会话列表失败')
+      })
+    })
+  }
+
+  /**
+   * 获取指定会话的消息历史
+   */
+  static async getMessageHistory(conversationId: number, page: number = 1, size: number = 50): Promise<MessageVO[]> {
+    const token = await TokenUtil.getToken()
+    const url = `${Constants.BASE_URL}/api/chat/history/${conversationId}?page=${page}&size=${size}`
+
+    return new Promise((resolve, reject) => {
+      http.createHttp().request(url, {
+        method: http.RequestMethod.GET,
+        header: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        connectTimeout: 15000
+      }).then((response: http.HttpResponse) => {
+        const result = JSON.parse(response.result as string) as ApiResult<MessageVO[]>
+        if (result.code === 200) {
+          resolve(result.data)
+        } else {
+          reject(result.message || '获取消息历史失败')
+        }
+      }).catch((err:Error) => {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        reject(errorMsg || '获取消息历史失败')
+      })
+    })
+  }
+
+  /**
+   * 获取当前会话ID
+   */
+  static getConversationId(): number {
+    return ChatApiService.conversationId
+  }
+
+  /**
+   * 设置当前会话ID
+   */
+  static setConversationId(id: number): void {
+    ChatApiService.conversationId = id
+  }
+
+  /**
+   * 重置会话（新建会话）
+   */
+  static resetConversation(): void {
+    ChatApiService.conversationId = 0
+  }
+
+  /**
+   * 删除会话
+   */
+  static async deleteConversation(conversationId: number): Promise<void> {
+    const token = await TokenUtil.getToken()
+    const url = `${Constants.BASE_URL}/api/chat/conversation/${conversationId}`
+
+    return new Promise((resolve, reject) => {
+      http.createHttp().request(url, {
+        method: http.RequestMethod.DELETE,
+        header: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        connectTimeout: 15000
+      }).then((response: http.HttpResponse) => {
+        const result = JSON.parse(response.result as string) as ApiResult<null>
+        if (result.code === 200) {
+          resolve()
+        } else {
+          reject(result.message || '删除会话失败')
+        }
+      }).catch((err:Error) => {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        reject(errorMsg || '删除会话失败')
+      })
+    })
   }
 }
