@@ -1,7 +1,5 @@
-<!-- views/dashboard/index.vue -->
 <template>
   <div class="dashboard">
-    <!-- 第一行：统计卡片 -->
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
         <el-card shadow="hover">
@@ -29,7 +27,6 @@
       </el-col>
     </el-row>
 
-    <!-- 第二行：柱状图 + 饼图 -->
     <el-row :gutter="20" class="chart-row">
       <el-col :span="16">
         <el-card shadow="hover">
@@ -45,7 +42,6 @@
       </el-col>
     </el-row>
 
-    <!-- 第三行：折线图 -->
     <el-row :gutter="20" class="chart-row">
       <el-col :span="24">
         <el-card shadow="hover">
@@ -55,7 +51,6 @@
       </el-col>
     </el-row>
 
-    <!-- 第四行：活动列表 -->
     <el-row :gutter="20" class="activity-row">
       <el-col :span="24">
         <el-card shadow="hover">
@@ -69,10 +64,10 @@
     </el-row>
   </div>
 </template>
-
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
+import { getDashboardData } from '@/api/dashboard'
 
 const barChartRef = ref(null)
 const pieChartRef = ref(null)
@@ -81,37 +76,36 @@ let barChartInstance = null
 let pieChartInstance = null
 let lineChartInstance = null
 
-const data = ref({
-  totalUsers: 128,
-  totalSkills: 24,
-  totalRecords: 856,
-  aiCalls: 1234,
-  recentActivities: [
-    { content: '用户 admin 完成了技能评估', time: '2024-01-15 10:30' },
-    { content: '用户 user1 开始了新的学习任务', time: '2024-01-15 09:15' },
-    { content: '用户 user2 完成了模拟面试', time: '2024-01-14 16:45' },
-    { content: '用户 user3 调用了AI助手', time: '2024-01-14 14:20' },
-    { content: '用户 user4 注册了新账户', time: '2024-01-13 11:00' }
-  ]
-})
+const data = ref(null)
+
+async function fetchData() {
+  try {
+    data.value = await getDashboardData()
+    initBarChart()
+    initPieChart()
+    initLineChart()
+  } catch (error) {
+    console.error('获取看板数据失败:', error)
+    data.value = {
+      totalUsers: '-',
+      totalSkills: '-',
+      totalRecords: '-',
+      aiCalls: '-',
+      dailyAiCalls: [],
+      skillDistribution: [],
+      dailyNewUsers: [],
+      recentActivities: []
+    }
+  }
+}
 
 function initBarChart() {
-  if (!barChartRef.value) return
+  if (!barChartRef.value || !data.value?.dailyAiCalls) return
 
   barChartInstance = echarts.init(barChartRef.value)
 
-  const today = new Date()
-  const dates = []
-  const calls = []
-
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    dates.push(`${month}月${day}日`)
-    calls.push(Math.floor(Math.random() * 200) + 50)
-  }
+  const dates = data.value.dailyAiCalls.map(item => item.date)
+  const calls = data.value.dailyAiCalls.map(item => item.count)
 
   const option = {
     tooltip: {
@@ -166,9 +160,14 @@ function initBarChart() {
 }
 
 function initPieChart() {
-  if (!pieChartRef.value) return
+  if (!pieChartRef.value || !data.value?.skillDistribution) return
 
   pieChartInstance = echarts.init(pieChartRef.value)
+
+  const pieData = data.value.skillDistribution.map(item => ({
+    name: item.name,
+    value: item.count
+  }))
 
   const option = {
     tooltip: {
@@ -205,13 +204,7 @@ function initPieChart() {
         labelLine: {
           show: false
         },
-        data: [
-          { value: 35, name: '前端开发' },
-          { value: 25, name: '后端开发' },
-          { value: 20, name: '数据科学' },
-          { value: 15, name: '人工智能' },
-          { value: 5, name: '其他' }
-        ]
+        data: pieData
       }
     ]
   }
@@ -220,22 +213,12 @@ function initPieChart() {
 }
 
 function initLineChart() {
-  if (!lineChartRef.value) return
+  if (!lineChartRef.value || !data.value?.dailyNewUsers) return
 
   lineChartInstance = echarts.init(lineChartRef.value)
 
-  const today = new Date()
-  const dates = []
-  const newUsers = []
-
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    dates.push(`${month}-${day}`)
-    newUsers.push(Math.floor(Math.random() * 50) + 10)
-  }
+  const dates = data.value.dailyNewUsers.map(item => item.date)
+  const newUsers = data.value.dailyNewUsers.map(item => item.count)
 
   const option = {
     tooltip: {
@@ -334,9 +317,7 @@ function handleResize() {
 }
 
 onMounted(() => {
-  initBarChart()
-  initPieChart()
-  initLineChart()
+  fetchData()
   window.addEventListener('resize', handleResize)
 })
 
