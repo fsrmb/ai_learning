@@ -4,6 +4,6 @@ export function getDashboardData() {
   return request.get('/dashboard')
 }
 
-export function getUserAiStats() {
-  return request.get('/dashboard/user-ai-stats')
+export function getUserAiStats(params) {
+  return request.get('/dashboard/user-ai-stats', { params })
 }

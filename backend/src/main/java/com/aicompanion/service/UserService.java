@@ -4,6 +4,7 @@ import com.aicompanion.model.dto.LoginDTO;
 import com.aicompanion.model.dto.RegisterDTO;
 import com.aicompanion.model.dto.UserDTO;
 import com.aicompanion.model.vo.LoginVO;
+import com.aicompanion.model.vo.PageResult;
 import com.aicompanion.model.vo.UserVO;
 
 import java.util.List;
@@ -57,6 +58,16 @@ public interface UserService {
      * @return 用户列表
      */
     List<UserVO> searchUsers(String role, String keyword);
+
+    /**
+     * 搜索用户 - 分页版本
+     * @param role 角色（可选）
+     * @param keyword 关键词（可选），匹配 username 或 nickname
+     * @param page 页码（从1开始）
+     * @param size 每页大小
+     * @return 分页结果
+     */
+    PageResult<UserVO> searchUsers(String role, String keyword, Integer page, Integer size);
 
     /**
      * 创建用户（管理后台）

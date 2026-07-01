@@ -3,6 +3,7 @@ package com.aicompanion.service.impl;
 import com.aicompanion.mapper.*;
 import com.aicompanion.model.entity.*;
 import com.aicompanion.model.vo.DashboardVO;
+import com.aicompanion.model.vo.PageResult;
 import com.aicompanion.model.vo.UserAiStatsVO;
 import com.aicompanion.service.DashboardService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -73,8 +75,43 @@ public class DashboardServiceImpl implements DashboardService {
             stats.setTotalDurationMs(histories.stream().mapToLong(h -> h.getDurationMs() != null ? h.getDurationMs() : 0).sum());
 
             return stats;
-        }).sorted((a, b) -> Long.compare(b.getChatCount(), a.getChatCount()))
+        }).sorted((a, b) -> Long.compare(a.getUserId(), b.getUserId()))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResult<UserAiStatsVO> getUserAiStats(Integer page, Integer size) {
+        LambdaQueryWrapper<User> userQueryWrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getStatus, 1);
+        
+        Long total = userMapper.selectCount(userQueryWrapper);
+        
+        int start = (page - 1) * size;
+        List<User> users = userMapper.selectList(userQueryWrapper.last("LIMIT " + start + ", " + size));
+
+        List<UserAiStatsVO> statsList = users.stream().map(user -> {
+            UserAiStatsVO stats = new UserAiStatsVO();
+            stats.setUserId(user.getId());
+            stats.setUsername(user.getUsername());
+            stats.setNickname(user.getNickname());
+
+            Long chatCount = chatMessageMapper.selectCount(new LambdaQueryWrapper<ChatMessage>()
+                    .eq(ChatMessage::getRole, "ASSISTANT")
+                    .inSql(ChatMessage::getConversationId,
+                            "SELECT id FROM chat_conversation WHERE user_id = " + user.getId())
+                    .eq(ChatMessage::getDeleted, 0));
+            stats.setChatCount(chatCount);
+
+            List<AIChatHistory> histories = aiChatHistoryMapper.selectList(
+                    new LambdaQueryWrapper<AIChatHistory>().eq(AIChatHistory::getUserId, user.getId()));
+            stats.setTotalTokens(histories.stream().mapToLong(h -> h.getTokenCount() != null ? h.getTokenCount() : 0).sum());
+            stats.setTotalDurationMs(histories.stream().mapToLong(h -> h.getDurationMs() != null ? h.getDurationMs() : 0).sum());
+
+            return stats;
+        }).sorted((a, b) -> Long.compare(a.getUserId(), b.getUserId()))
+                .collect(Collectors.toList());
+
+        return PageResult.of(statsList, total, page, size);
     }
 
     private List<DashboardVO.DailyStat> getDailyAiCalls(int days) {
@@ -88,8 +125,8 @@ public class DashboardServiceImpl implements DashboardService {
 
             Long count = chatMessageMapper.selectCount(new LambdaQueryWrapper<ChatMessage>()
                     .eq(ChatMessage::getRole, "ASSISTANT")
-                    .ge(ChatMessage::getCreateTime, start)
-                    .lt(ChatMessage::getCreateTime, end)
+                    .ge(ChatMessage::getUpdateTime, start)
+                    .lt(ChatMessage::getUpdateTime, end)
                     .eq(ChatMessage::getDeleted, 0));
 
             DashboardVO.DailyStat stat = new DashboardVO.DailyStat();

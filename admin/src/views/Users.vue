@@ -55,6 +55,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[5, 10, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog
@@ -113,6 +125,10 @@ const searchForm = reactive({
 const userList = ref([])
 const loading = ref(false)
 
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
 const roleMap = {
   ADMIN: '管理员',
   TEACHER: '教师',
@@ -138,26 +154,43 @@ const loadUsers = async () => {
   try {
     const params = {
       keyword: searchForm.keyword,
-      role: searchForm.role
+      role: searchForm.role,
+      page: currentPage.value,
+      size: pageSize.value
     }
     const result = await getUserList(params)
-    userList.value = result || []
+    userList.value = result.records || []
+    total.value = result.total || 0
   } catch (error) {
     console.error('获取用户列表失败:', error)
     ElMessage.error('获取用户列表失败')
     userList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
 const handleSearch = () => {
+  currentPage.value = 1
   loadUsers()
 }
 
 const handleReset = () => {
   searchForm.keyword = ''
   searchForm.role = ''
+  currentPage.value = 1
+  loadUsers()
+}
+
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1
+  loadUsers()
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
   loadUsers()
 }
 
@@ -307,5 +340,13 @@ onMounted(() => {
   margin-bottom: 20px;
   padding-bottom: 20px;
   border-bottom: 1px solid #eee;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
 }
 </style>

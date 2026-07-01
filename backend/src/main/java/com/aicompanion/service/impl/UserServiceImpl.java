@@ -9,6 +9,7 @@ import com.aicompanion.mapper.UserMapper;
 import com.aicompanion.service.UserService;
 import com.aicompanion.common.util.JwtUtil;
 import com.aicompanion.model.vo.LoginVO;
+import com.aicompanion.model.vo.PageResult;
 import com.aicompanion.model.vo.UserVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -222,5 +223,33 @@ public class UserServiceImpl implements UserService {
     public List<UserVO> searchUsers(String role, String keyword) {
         List<User> users = userMapper.searchUsers(role, keyword);
         return users.stream().map(this::convertToUserVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResult<UserVO> searchUsers(String role, String keyword, Integer page, Integer size) {
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (role != null && !role.isEmpty()) {
+            queryWrapper.eq(User::getRole, role);
+        }
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                    .like(User::getUsername, keyword)
+                    .or()
+                    .like(User::getNickname, keyword));
+        }
+        
+        queryWrapper.eq(User::getDeleted, 0);
+        queryWrapper.orderByAsc(User::getId);
+        
+        Long total = userMapper.selectCount(queryWrapper);
+        
+        int start = (page - 1) * size;
+        List<User> users = userMapper.selectList(queryWrapper.last("LIMIT " + start + ", " + size));
+        
+        List<UserVO> userVOList = users.stream().map(this::convertToUserVO).collect(Collectors.toList());
+        
+        return PageResult.of(userVOList, total, page, size);
     }
 }

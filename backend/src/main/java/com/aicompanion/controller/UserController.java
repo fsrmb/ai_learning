@@ -3,6 +3,7 @@ import com.aicompanion.model.entity.User;
 import com.aicompanion.common.response.Result;
 import com.aicompanion.model.dto.UserDTO;
 import com.aicompanion.service.UserService;
+import com.aicompanion.model.vo.PageResult;
 import com.aicompanion.model.vo.UserVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,11 +48,13 @@ public class UserController {
     }
 
     @GetMapping
-    public Result<List<UserVO>> searchUsers(
+    public Result<PageResult<UserVO>> searchUsers(
             @RequestParam(required = false) String role,
-            @RequestParam(required = false) String keyword) {
-        List<UserVO> list = userService.searchUsers(role, keyword);
-        return Result.success(list);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        PageResult<UserVO> pageResult = userService.searchUsers(role, keyword, page, size);
+        return Result.success(pageResult);
     }
 
     @PostMapping
