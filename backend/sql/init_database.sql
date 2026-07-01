@@ -304,6 +304,25 @@ CREATE TABLE IF NOT EXISTS `resume_optimization` (
     KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='简历优化记录表';
 
+-- 15. 创建 ai_chat_history 表（如果不存在）
+CREATE TABLE IF NOT EXISTS `ai_chat_history` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `conversation_id` BIGINT DEFAULT NULL COMMENT '会话ID',
+    `query_text` TEXT NOT NULL COMMENT '用户查询文本',
+    `response_text` TEXT DEFAULT NULL COMMENT 'AI响应文本',
+    `model_name` VARCHAR(64) DEFAULT NULL COMMENT '使用的模型名称',
+    `token_count` INT DEFAULT 0 COMMENT '消耗token数量',
+    `duration_ms` INT DEFAULT 0 COMMENT '响应耗时(毫秒)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_conversation_id` (`conversation_id`),
+    KEY `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI聊天历史记录表';
+
 -- ============================================================
 -- 初始数据
 -- ============================================================
@@ -367,15 +386,14 @@ INSERT INTO `user_skill_progress` (`user_id`, `node_id`, `status`, `current_exp`
 -- 王五的进度（进度较少）
 (4, 1, 1, 50, '2024-03-10 09:00:00', NULL, '2024-03-10 09:00:00', '2024-03-20 14:00:00'),
 (4, 2, 1, 30, '2024-03-20 15:00:00', NULL, '2024-03-20 15:00:00', '2024-04-01 10:00:00');
-
 -- 5. 插入题目库数据
 INSERT INTO `skill_question` (`node_id`, `question_text`, `options_json`, `correct_answer`, `explanation`, `difficulty`, `source`, `use_count`, `correct_rate`) VALUES
--- 前端技能树题目
-(2, 'HTML5 中哪个标签用于定义导航链接？', '["A. <nav>", "B. <navigation>", "C. <menu>", "D. <links>"]', 'A', '<nav>标签用于定义导航链接部分，是HTML5新增的语义化标签。', 1, 'MANUAL', 25, 88.00),
-(2, '以下哪个不是 HTML5 新增的语义化标签？', '["A. <article>", "B. <section>", "C. <div>", "D. <footer>"]', 'C', '<div>是HTML4就存在的通用容器标签，不是HTML5新增的。', 2, 'MANUAL', 20, 75.00),
+-- 前端技能树题目（所有尖括号已转义为 \u003c 和 \u003e）
+(2, 'HTML5 中哪个标签用于定义导航链接？', '["A. \\u003cnav\\u003e", "B. \\u003cnavigation\\u003e", "C. \\u003cmenu\\u003e", "D. \\u003clinks\\u003e"]', 'A', '<nav>标签用于定义导航链接部分，是HTML5新增的语义化标签。', 1, 'MANUAL', 25, 88.00),
+(2, '以下哪个不是 HTML5 新增的语义化标签？', '["A. \\u003carticle\\u003e", "B. \\u003csection\\u003e", "C. \\u003cdiv\\u003e", "D. \\u003cfooter\\u003e"]', 'C', '<div>是HTML4就存在的通用容器标签，不是HTML5新增的。', 2, 'MANUAL', 20, 75.00),
 (3, 'CSS 中哪个属性用于设置元素的宽度？', '["A. width", "B. height", "C. size", "D. dimension"]', 'A', 'width属性用于设置元素的宽度，height用于设置高度。', 1, 'MANUAL', 30, 90.00),
 (3, 'Flexbox 中哪个属性用于设置主轴方向？', '["A. align-items", "B. justify-content", "C. flex-direction", "D. flex-wrap"]', 'C', 'flex-direction属性定义了主轴方向，决定了flex子项的排列方向。', 3, 'MANUAL', 15, 60.00),
-(5, 'JavaScript 中 typeof null 的结果是什么？', '["A. \"null\"", "B. \"undefined\"", "C. \"object\"", "D. \"number\""]', 'C', '这是JavaScript的一个历史遗留bug，typeof null返回"object"。', 3, 'MANUAL', 22, 45.45),
+(5, 'JavaScript 中 typeof null 的结果是什么？', '["A. \\"null\\"", "B. \\"undefined\\"", "C. \\"object\\"", "D. \\"number\\""]', 'C', '这是JavaScript的一个历史遗留bug，typeof null返回"object"。', 3, 'MANUAL', 22, 45.45),
 (5, '以下哪个方法可以将数组转换为字符串？', '["A. toString()", "B. toArray()", "C. join()", "D. A和C都可以"]', 'D', 'toString()将数组转换为逗号分隔的字符串，join()可以指定分隔符。', 2, 'MANUAL', 18, 77.78),
 (8, 'Vue3 中哪个 API 用于创建响应式对象？', '["A. ref", "B. reactive", "C. computed", "D. watch"]', 'B', 'reactive()用于创建响应式对象，ref()用于创建响应式基本类型。', 3, 'MANUAL', 12, 75.00),
 (8, 'Vue3 的 Composition API 中，setup 函数的返回值是什么？', '["A. 模板中使用的数据和方法", "B. 组件实例", "C. 生命周期钩子", "D. 路由配置"]', 'A', 'setup函数返回一个对象，包含模板中使用的数据和方法。', 3, 'MANUAL', 10, 80.00),
@@ -389,7 +407,6 @@ INSERT INTO `skill_question` (`node_id`, `question_text`, `options_json`, `corre
 (14, 'MySQL 中哪个索引类型最适合范围查询？', '["A. B-tree", "B. Hash", "C. Full-text", "D. R-tree"]', 'A', 'B-tree索引是MySQL默认的索引类型，支持范围查询、排序等操作。', 3, 'MANUAL', 18, 66.67),
 (16, 'Redis 中哪个命令用于获取字符串类型的值？', '["A. GET", "B. SET", "C. DEL", "D. EXISTS"]', 'A', 'GET命令用于获取指定key的字符串值。', 1, 'MANUAL', 26, 92.31),
 (16, 'Redis 中哪种数据结构最适合实现分布式锁？', '["A. String", "B. Hash", "C. Set", "D. List"]', 'A', '通常使用String类型配合SET NX（不存在时设置）命令实现分布式锁。', 4, 'MANUAL', 12, 50.00);
-
 -- 6. 插入评估记录数据
 INSERT INTO `skill_assessment` (`user_id`, `node_id`, `assessment_time`, `duration_seconds`, `total_score`, `pass_threshold`, `passed`, `question_count`, `correct_count`, `difficulty`) VALUES
 -- 张三的评估记录（难度1-3）
