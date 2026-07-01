@@ -56,8 +56,8 @@ export class MarkdownUtil {
     // ⑦ 有序列表：1. 文字 → <li>文字</li>
     html = html.replace(/^\d+\. (.+)$/gm, '<li style="margin-left:16px;margin-bottom:4px;font-size:18px;">$1</li>')
 
-    // ⑧ 引用：> 文字 → <blockquote>文字</blockquote>
-    html = html.replace(/^> (.+)$/gm, '<blockquote style="border-left:4px solid #409EFF;margin:8px 0;padding-left:12px;color:#666;font-size:18px;">$1</blockquote>')
+    // ⑧ 引用：> 文字 或 >文字 → <blockquote>文字</blockquote>
+    html = html.replace(/^>\s?(.+)$/gm, '<blockquote style="border-left:4px solid #409EFF;margin:8px 0;padding-left:12px;color:#666;font-size:18px;">$1</blockquote>')
 
     // ⑨ 换行：\n → <br>
     html = html.replace(/\n/g, '<br>')

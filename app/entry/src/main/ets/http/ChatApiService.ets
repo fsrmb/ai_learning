@@ -152,6 +152,11 @@ export class ChatApiService {
 
   /**
    * 解析 SSE 响应，提取完整文本
+   * 
+   * SSE 协议规范：
+   * - 同一事件内连续的 data: 行之间用 \n 连接
+   * - 空行表示事件结束
+   * - 例如 AI 输出 'Hello\nWorld' 会被编码为 'data:Hello\ndata:World\n\n'
    */
   private static parseSseResponse(sseData: string): string {
     console.info('CHAT_PARSE_START, raw data length:', sseData.length)
@@ -160,12 +165,14 @@ export class ChatApiService {
     console.info('CHAT_PARSE_RAW_PREVIEW:', preview)
     
     let fullText = ''
+    let eventLines: string[] = []
     const lines = sseData.split(/\r?\n/)
     
     console.info('CHAT_PARSE_LINES_COUNT:', lines.length)
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
+      
       if (line.startsWith('data:')) {
         let content = line.substring(5)
         if (content.startsWith(' ')) {
@@ -177,13 +184,23 @@ export class ChatApiService {
           break
         }
         
-        fullText += content
-        console.info('CHAT_PARSE_CHUNK:', content.substring(0, 50))
+        eventLines.push(content)
+      } else if (line.length === 0) {
+        if (eventLines.length > 0) {
+          fullText += eventLines.join('\n')
+          eventLines = []
+        }
       }
     }
     
+    if (eventLines.length > 0) {
+      fullText += eventLines.join('\n')
+    }
+    
     console.info('CHAT_PARSE_COMPLETE, full text length:', fullText.length)
-    console.info('CHAT_FULL_TEXT_PREVIEW:', fullText.substring(0, 150))
+    
+    const debugPreview = fullText.substring(0, 200).replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+    console.info('CHAT_FULL_TEXT_PREVIEW (debug):', debugPreview)
     
     if (fullText.length === 0 && sseData.length > 0) {
       console.warn('CHAT_WARNING: No data lines found, returning raw data')
