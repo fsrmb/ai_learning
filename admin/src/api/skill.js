@@ -1,21 +1,37 @@
 import request from './request'
 
-export function getSkillTree() {
-  return request.get('/api/skills/tree')
+export function getSkillTreeList(params) {
+  return request.get('/skill-trees', { params })
 }
 
-export function getSkillTreeByCategory(category) {
-  return request.get('/api/skills/tree', { params: { category } })
+export function getSkillTreeDetail(id) {
+  return request.get(`/skill-trees/${id}`)
 }
 
-export function createSkill(data) {
-  return request.post('/api/skills', data)
+export function getSkillNodeTree(treeId) {
+  return request.get(`/skill-trees/${treeId}/nodes`)
 }
 
-export function updateSkill(id, data) {
-  return request.put(`/api/skills/${id}`, data)
+export function createSkillTree(data) {
+  return request.post('/skill-trees', data)
 }
 
-export function deleteSkill(id) {
-  return request.delete(`/api/skills/${id}`)
+export function updateSkillTree(id, data) {
+  return request.put(`/skill-trees/${id}`, data)
+}
+
+export function deleteSkillTree(id) {
+  return request.delete(`/skill-trees/${id}`)
+}
+
+export function createSkillNode(data) {
+  return request.post('/skill-trees/nodes', data)
+}
+
+export function updateSkillNode(id, data) {
+  return request.put(`/skill-trees/nodes/${id}`, data)
+}
+
+export function deleteSkillNode(id) {
+  return request.delete(`/skill-trees/nodes/${id}`)
 }

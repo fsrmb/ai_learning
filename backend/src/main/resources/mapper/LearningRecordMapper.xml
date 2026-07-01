@@ -12,7 +12,7 @@
         <if test="courseType != null and courseType != ''">
             AND course_type = #{courseType}
         </if>
-        ORDER BY learn_date DESC
+        ORDER BY id ASC
     </select>
 
 </mapper>

@@ -120,15 +120,18 @@ const loadRecords = async () => {
       params.courseType = searchForm.courseType
     }
 
-    const response = await getLearningRecordList(params)
-    const data = response.data || []
+    const data = await getLearningRecordList(params)
     
-    recordList.value = data.map(record => ({
+    const formattedData = data.map(record => ({
       ...record,
       username: record.userName,
       learnDate: record.learnDate
     }))
-    pagination.total = data.length
+    
+    pagination.total = formattedData.length
+    const start = (pagination.page - 1) * pagination.size
+    const end = start + pagination.size
+    recordList.value = formattedData.slice(start, end)
   } catch (error) {
     console.error('获取学习记录失败:', error)
     recordList.value = []
