@@ -278,19 +278,14 @@ struct Chat {
               ListItem() {
                 Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.Start }) {
                   Column() {
-                    Web({
-                      src: this.getSafeWebSrc(this.streamingContent),
-                      controller: new webview.WebviewController(),
-                      renderMode: RenderMode.SYNC_RENDER
-                    })
-                      .layoutMode(WebLayoutMode.FIT_CONTENT)
-                      .overScrollMode(OverScrollMode.NEVER)
-                      .width('100%')
-                      .backgroundColor('#F0F0F0')
-                      .borderRadius(18)
-                      .javaScriptAccess(true)
-                      .zoomAccess(false)
+                    Text(this.streamingContent)
+                      .fontSize(18)
+                      .fontColor('#333')
                       .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+                      .borderRadius(18)
+                      .backgroundColor('#F0F0F0')
+                      .width('100%')
+                      .wordBreak( WordBreak.BREAK_ALL)
                     Text('正在输入...')
                       .fontSize(10)
                       .fontColor('#4A90D9')

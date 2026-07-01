@@ -46,7 +46,7 @@
   - 禁止修改 BaseEntity 的结构
   - 禁止在 Service 中直接调用 Mapper，必须通过 Service 层
   - 所有新增接口必须先在 Swagger (项目文档) 中能正常调通
-  
+  - 禁止使用非鸿蒙系统的 API，调用API时必须考虑兼容性
   ## 新增模块步骤
   1. model/entity/ 创建实体类，继承 BaseEntity
   2. model/dto/ 创建 DTO 类，添加 @Valid 校验

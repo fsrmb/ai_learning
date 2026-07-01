@@ -89,7 +89,6 @@ export class ChatApiService {
       
       const httpRequest = http.createHttp()
       
-      // HarmonyOS 不支持 SSE 的 dataReceive 事件，使用一次性接收
       try {
         const response = await httpRequest.request(url, {
           method: http.RequestMethod.POST,
@@ -107,33 +106,26 @@ export class ChatApiService {
         })
 
         console.info('CHAT_RESPONSE_CODE:', response.responseCode)
-        console.info('CHAT_RESPONSE_HEADERS:', JSON.stringify(response.header))
         
         if (response.responseCode !== 200) {
           onError('请求失败: HTTP ' + response.responseCode)
           return
         }
 
-        // 将响应转换为字符串
         const resultStr = ChatApiService.resultToString(response.result)
         console.info('CHAT_RESPONSE_LENGTH:', resultStr.length)
-        console.info('CHAT_RESPONSE_PREVIEW:', resultStr.substring(0, 300))
-
-        // 检查是否是 SSE 格式（以 data: 开头）
-        const isSse = resultStr.startsWith('data:')
-        console.info('CHAT_IS_SSE_FORMAT:', isSse)
         
-        if (!isSse) {
-          console.error('CHAT_ERROR: Not SSE format, raw response:', resultStr.substring(0, 500))
-          onError('服务端返回格式错误')
-          return
-        }
-
-        // 解析 SSE 数据并模拟流式显示
-        await ChatApiService.parseSseResponseAndSimulateStream(resultStr, onData)
+        const fullText = ChatApiService.parseSseResponse(resultStr)
+        console.info('CHAT_FULL_TEXT_LENGTH:', fullText.length)
+        
+        await ChatApiService.simulateStream(fullText, onData)
         
         onComplete()
         
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        console.error('CHAT_REQUEST_ERROR:', errorMsg)
+        onError('请求失败: ' + errorMsg)
       } finally {
         httpRequest.destroy()
       }
@@ -159,21 +151,11 @@ export class ChatApiService {
   }
 
   /**
-   * 解析 SSE 响应并模拟流式显示
-   * 
-   * SSE 协议规范：
-   * - 每个 data: 行代表一段数据
-   * - 同一事件内的多个 data: 行之间用换行符分隔
-   * - 空行表示当前事件结束
-   * - data: 后紧跟一个空格（可选）
+   * 解析 SSE 响应，提取完整文本
    */
-  private static async parseSseResponseAndSimulateStream(
-    sseData: string,
-    onData: (chunk: string) => void
-  ): Promise<void> {
+  private static parseSseResponse(sseData: string): string {
     console.info('CHAT_PARSE_START, raw data length:', sseData.length)
     
-    // 显示原始数据的前500字符（将换行符转义以便查看）
     const preview = sseData.substring(0, 500).replace(/\n/g, '\\n').replace(/\r/g, '\\r')
     console.info('CHAT_PARSE_RAW_PREVIEW:', preview)
     
@@ -182,7 +164,8 @@ export class ChatApiService {
     
     console.info('CHAT_PARSE_LINES_COUNT:', lines.length)
     
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
       if (line.startsWith('data:')) {
         let content = line.substring(5)
         if (content.startsWith(' ')) {
@@ -195,19 +178,26 @@ export class ChatApiService {
         }
         
         fullText += content
-        console.info('CHAT_PARSE_CHUNK:', content)
+        console.info('CHAT_PARSE_CHUNK:', content.substring(0, 50))
       }
     }
     
     console.info('CHAT_PARSE_COMPLETE, full text length:', fullText.length)
     console.info('CHAT_FULL_TEXT_PREVIEW:', fullText.substring(0, 150))
     
-    // 检查换行符情况
-    const newlineCount = (fullText.match(/\n/g) || []).length
-    console.info('CHAT_FULL_TEXT_NEWLINE_COUNT:', newlineCount)
+    if (fullText.length === 0 && sseData.length > 0) {
+      console.warn('CHAT_WARNING: No data lines found, returning raw data')
+      return sseData
+    }
     
-    const chars = fullText.split('')
-    console.info('CHAT_TOTAL_CHARS:', chars.length)
+    return fullText
+  }
+
+  /**
+   * 模拟流式输出（逐字符显示）
+   */
+  private static async simulateStream(text: string, onData: (chunk: string) => void): Promise<void> {
+    const chars = text.split('')
     
     for (let i = 0; i < chars.length; i++) {
       onData(chars[i])
@@ -218,8 +208,6 @@ export class ChatApiService {
         })
       }
     }
-    
-    console.info('CHAT_SIMULATE_STREAM_COMPLETE')
   }
 
   /**
