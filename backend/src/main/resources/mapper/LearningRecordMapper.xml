@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aicompanion.mapper.LearningRecordMapper">
+
+    <select id="searchRecords" resultType="com.aicompanion.model.entity.LearningRecord">
+        SELECT * FROM learning_record
+        WHERE deleted = 0
+        <if test="userName != null and userName != ''">
+            AND user_name LIKE CONCAT('%', #{userName}, '%')
+        </if>
+        <if test="courseType != null and courseType != ''">
+            AND course_type = #{courseType}
+        </if>
+        ORDER BY learn_date DESC
+    </select>
+
+</mapper>

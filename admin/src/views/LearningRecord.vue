@@ -17,11 +17,11 @@
               style="width: 150px;"
             >
               <el-option label="全部" value="" />
-              <el-option label="编程" value="programming" />
-              <el-option label="数学" value="math" />
-              <el-option label="英语" value="english" />
-              <el-option label="算法" value="algorithm" />
-              <el-option label="数据库" value="database" />
+              <el-option label="编程" value="PROGRAMMING" />
+              <el-option label="数学" value="MATH" />
+              <el-option label="英语" value="ENGLISH" />
+              <el-option label="算法" value="ALGORITHM" />
+              <el-option label="数据库" value="DATABASE" />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -44,14 +44,14 @@
         <el-table-column prop="score" label="成绩" width="100">
           <template #default="scope">
             <el-tag :type="getScoreType(scope.row.score)">
-              {{ scope.row.score }}分
+              {{ scope.row.score !== null ? scope.row.score + '分' : '-' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
-            <el-tag :type="scope.row.status === 'completed' ? 'success' : 'warning'">
-              {{ scope.row.status === 'completed' ? '已完成' : '进行中' }}
+            <el-tag :type="scope.row.status === 'COMPLETED' ? 'success' : 'warning'">
+              {{ scope.row.status === 'COMPLETED' ? '已完成' : '进行中' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -74,6 +74,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getLearningRecordList } from '@/api/learningRecord'
 
 const searchForm = reactive({
   username: '',
@@ -87,15 +88,14 @@ const pagination = reactive({
 })
 
 const recordList = ref([])
-const allRecords = ref([])
 const loading = ref(false)
 
 const courseTypeMap = {
-  programming: '编程',
-  math: '数学',
-  english: '英语',
-  algorithm: '算法',
-  database: '数据库'
+  PROGRAMMING: '编程',
+  MATH: '数学',
+  ENGLISH: '英语',
+  ALGORITHM: '算法',
+  DATABASE: '数据库'
 }
 
 const getCourseTypeLabel = (type) => {
@@ -103,69 +103,32 @@ const getCourseTypeLabel = (type) => {
 }
 
 const getScoreType = (score) => {
+  if (score === null) return 'info'
   if (score >= 90) return 'success'
   if (score >= 60) return 'info'
   return 'danger'
 }
 
-const mockRecords = () => {
-  const types = ['programming', 'math', 'english', 'algorithm', 'database']
-  const courses = {
-    programming: ['Vue3 入门教程', 'React 实战', 'TypeScript 基础', 'Node.js 后端开发', 'Webpack 配置'],
-    math: ['高等数学', '线性代数', '概率论', '离散数学', '微积分'],
-    english: ['大学英语四级', '雅思听力', '商务英语', '英语口语', '英语写作'],
-    algorithm: ['数据结构', '算法导论', '动态规划', '图论基础', '排序算法'],
-    database: ['MySQL 基础', 'Redis 实战', 'MongoDB', 'PostgreSQL', 'SQL 优化']
-  }
-  const records = []
-  for (let i = 1; i <= 100; i++) {
-    const type = types[Math.floor(Math.random() * types.length)]
-    const courseList = courses[type]
-    const courseName = courseList[Math.floor(Math.random() * courseList.length)]
-    records.push({
-      id: i,
-      username: `user${Math.floor(Math.random() * 20) + 1}`,
-      courseName: courseName,
-      courseType: type,
-      duration: Math.floor(Math.random() * 120) + 10,
-      score: Math.floor(Math.random() * 100),
-      status: Math.random() > 0.3 ? 'completed' : 'ongoing',
-      learnDate: `2024-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:00`
-    })
-  }
-  return records
-}
-
-const filterRecords = () => {
-  let filtered = [...allRecords.value]
-  
-  if (searchForm.username) {
-    const keyword = searchForm.username.toLowerCase()
-    filtered = filtered.filter(record => 
-      record.username.toLowerCase().includes(keyword)
-    )
-  }
-  
-  if (searchForm.courseType) {
-    filtered = filtered.filter(record => record.courseType === searchForm.courseType)
-  }
-  
-  return filtered
-}
-
 const loadRecords = async () => {
   loading.value = true
   try {
-    if (allRecords.value.length === 0) {
-      allRecords.value = mockRecords()
+    const params = {}
+    if (searchForm.username) {
+      params.userName = searchForm.username
     }
+    if (searchForm.courseType) {
+      params.courseType = searchForm.courseType
+    }
+
+    const response = await getLearningRecordList(params)
+    const data = response.data || []
     
-    const filtered = filterRecords()
-    
-    const start = (pagination.page - 1) * pagination.size
-    const end = start + pagination.size
-    recordList.value = filtered.slice(start, end)
-    pagination.total = filtered.length
+    recordList.value = data.map(record => ({
+      ...record,
+      username: record.userName,
+      learnDate: record.learnDate
+    }))
+    pagination.total = data.length
   } catch (error) {
     console.error('获取学习记录失败:', error)
     recordList.value = []
