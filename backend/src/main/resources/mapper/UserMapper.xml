@@ -14,7 +14,7 @@
             AND (username LIKE CONCAT('%', #{keyword}, '%')
                  OR nickname LIKE CONCAT('%', #{keyword}, '%'))
         </if>
-        ORDER BY create_time DESC
+        ORDER BY id ASC
     </select>
 
     <!-- 批量更新状态 -->
