@@ -58,7 +58,28 @@ CREATE TABLE IF NOT EXISTS `skill_tree` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能树表';
 
 -- ============================================================
--- 4. 技能节点表
+-- 4. 技能分类表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `skill_category` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `name` VARCHAR(64) NOT NULL COMMENT '分类名称',
+    `code` VARCHAR(64) NOT NULL COMMENT '分类编码（唯一标识）',
+    `description` VARCHAR(255) DEFAULT NULL COMMENT '分类描述',
+    `icon` VARCHAR(255) DEFAULT NULL COMMENT '图标',
+    `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用/1正常',
+    `create_time` DATETIME DEFAULT NULL COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT NULL COMMENT '更新时间',
+    `deleted` INT NOT NULL DEFAULT 0 COMMENT '删除标志：0未删除/1已删除',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_code` (`code`),
+    KEY `idx_status` (`status`),
+    KEY `idx_sort_order` (`sort_order`),
+    KEY `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='技能分类表';
+
+-- ============================================================
+-- 5. 技能节点表
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `skill_node` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -335,7 +356,20 @@ INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `phone`, `a
 ('wangwu', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '王五', 'wangwu@example.com', '13800138003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=wangwu', 'STUDENT', 1, '2024-03-05 11:45:00', '2024-06-15 10:00:00'),
 ('teacher_zhao', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '赵老师', 'zhao@example.com', '13800138004', 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhao', 'TEACHER', 1, '2024-01-20 08:30:00', '2024-06-10 09:00:00');
 
--- 2. 插入技能树数据
+-- 2. 插入技能分类数据
+INSERT INTO `skill_category` (`name`, `code`, `description`, `icon`, `sort_order`, `status`, `create_time`, `update_time`) VALUES
+('前端开发', 'FRONTEND', '前端开发相关技能', 'FrontEndIcon', 1, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('后端开发', 'BACKEND', '后端开发相关技能', 'BackEndIcon', 2, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('数据库', 'DATABASE', '数据库相关技能', 'DatabaseIcon', 3, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('算法与数据结构', 'ALGORITHM', '算法与数据结构相关技能', 'AlgorithmIcon', 4, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('移动开发', 'MOBILE', '移动端开发相关技能', 'MobileIcon', 5, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('运维', 'DEVOPS', '运维与DevOps相关技能', 'DevOpsIcon', 6, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('软技能', 'SOFT_SKILLS', '软技能与职业素养', 'SoftSkillsIcon', 7, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('人工智能', 'AI', '人工智能与机器学习', 'AiIcon', 8, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('数据分析', 'DATA', '数据分析与处理', 'DataIcon', 9, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
+('网络安全', 'SECURITY', '网络安全相关技能', 'SecurityIcon', 10, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00');
+
+-- 3. 插入技能树数据
 INSERT INTO `skill_tree` (`name`, `description`, `icon`, `category`, `difficulty_level`, `status`, `sort_order`, `create_time`, `update_time`) VALUES
 ('前端开发', '涵盖 HTML、CSS、JavaScript、主流框架等前端技能', 'FrontEndIcon', 'FRONTEND', 3, 1, 1, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),
 ('后端开发', 'Java、Spring Boot、微服务、数据库等后端技能', 'BackEndIcon', 'BACKEND', 3, 1, 2, '2024-01-10 10:00:00', '2024-01-10 10:00:00'),

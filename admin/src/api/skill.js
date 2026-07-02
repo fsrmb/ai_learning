@@ -5,7 +5,23 @@ export function getSkillTreeList(params) {
 }
 
 export function getSkillCategories() {
-  return request.get('/skill-trees/categories')
+  return request.get('/skill-categories/active')
+}
+
+export function getAllSkillCategories() {
+  return request.get('/skill-categories')
+}
+
+export function createSkillCategory(data) {
+  return request.post('/skill-categories', data)
+}
+
+export function updateSkillCategory(id, data) {
+  return request.put(`/skill-categories/${id}`, data)
+}
+
+export function deleteSkillCategory(id) {
+  return request.delete(`/skill-categories/${id}`)
 }
 
 export function getSkillTreeDetail(id) {

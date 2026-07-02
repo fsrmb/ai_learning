@@ -9,7 +9,7 @@
                        clearable style="width: 160px; margin-right: 8px"
                        filterable
                        @change="fetchTree">
-              <el-option v-for="cat in categories" :key="cat" :label="getCategoryLabel(cat)" :value="cat" />
+              <el-option v-for="cat in categories" :key="cat.code" :label="cat.name" :value="cat.code" />
             </el-select>
             <el-button type="primary" @click="openDialog()">新增技能树</el-button>
           </div>
@@ -56,7 +56,7 @@
         </el-form-item>
         <el-form-item label="分类" prop="category">
           <el-select v-model="form.category" style="width: 100%" filterable allow-create default-first-option>
-            <el-option v-for="cat in categories" :key="cat" :label="getCategoryLabel(cat)" :value="cat" />
+            <el-option v-for="cat in categories" :key="cat.code" :label="cat.name" :value="cat.code" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述" prop="description">
@@ -107,17 +107,15 @@ const editingSkill = ref(null)
 const formRef = ref(null)
 const categories = ref([])
 
-const categoryLabelMap = {
-  FRONTEND: '前端',
-  BACKEND: '后端',
-  DATABASE: '数据库',
-  ALGORITHM: '算法',
-  MOBILE: '移动端',
-  DEVOPS: '运维',
-  SOFT_SKILLS: '软技能'
+const getCategoryLabel = (categoryCode) => {
+  if (!categoryCode) return '未分类'
+  const found = categories.value.find(c => c.code === categoryCode)
+  return found ? found.name : categoryCode
 }
 
-const getCategoryLabel = (category) => categoryLabelMap[category] || category
+const getCategoryByCode = (code) => {
+  return categories.value.find(c => c.code === code)
+}
 
 const form = reactive({
   name: '',
@@ -276,7 +274,8 @@ async function handleSubmit() {
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
-    fetchTree()
+    await fetchCategories()
+    await fetchTree()
   } catch {
     ElMessage.error('操作失败')
   } finally {
