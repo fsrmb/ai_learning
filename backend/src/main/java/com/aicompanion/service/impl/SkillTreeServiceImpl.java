@@ -193,4 +193,15 @@ public class SkillTreeServiceImpl implements SkillTreeService {
                 })
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<String> getSkillCategories() {
+        List<SkillTree> skillTrees = skillTreeMapper.selectList(new LambdaQueryWrapper<SkillTree>()
+                .eq(SkillTree::getStatus, 1)
+                .eq(SkillTree::getDeleted, 0));
+        return skillTrees.stream()
+                .map(SkillTree::getCategory)
+                .distinct()
+                .collect(Collectors.toList());
+    }
 }

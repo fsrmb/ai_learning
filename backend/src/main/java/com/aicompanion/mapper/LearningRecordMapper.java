@@ -11,4 +11,8 @@ import java.util.List;
 public interface LearningRecordMapper extends BaseMapper<LearningRecord> {
 
     List<LearningRecord> searchRecords(@Param("userName") String userName, @Param("courseType") String courseType);
+
+    Long searchRecordsCount(@Param("userName") String userName, @Param("courseType") String courseType);
+
+    List<LearningRecord> searchRecordsPage(@Param("userName") String userName, @Param("courseType") String courseType, @Param("offset") Integer offset, @Param("size") Integer size);
 }

@@ -55,6 +55,12 @@ const routes = [
         name: 'AiManagement',
         component: () => import('../views/AiManagement.vue'),
         meta: { title: 'AI管理' }
+      },
+      {
+        path: '/skill-assessment',
+        name: 'SkillAssessment',
+        component: () => import('../views/SkillAssessment.vue'),
+        meta: { title: '技能评估' }
       }
     ]
   }

@@ -56,4 +56,9 @@ public interface SkillTreeService {
      * 获取技能树的节点树形结构
      */
     List<SkillNodeVO> getSkillNodeTree(Long treeId);
+
+    /**
+     * 获取所有技能树分类
+     */
+    List<String> getSkillCategories();
 }

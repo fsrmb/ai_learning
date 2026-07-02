@@ -7,12 +7,9 @@
           <div>
             <el-select v-model="filterCategory" placeholder="按分类筛选"
                        clearable style="width: 160px; margin-right: 8px"
+                       filterable
                        @change="fetchTree">
-              <el-option label="前端" value="FRONTEND" />
-              <el-option label="后端" value="BACKEND" />
-              <el-option label="数据库" value="DATABASE" />
-              <el-option label="算法" value="ALGORITHM" />
-              <el-option label="移动端" value="MOBILE" />
+              <el-option v-for="cat in categories" :key="cat" :label="getCategoryLabel(cat)" :value="cat" />
             </el-select>
             <el-button type="primary" @click="openDialog()">新增技能树</el-button>
           </div>
@@ -58,12 +55,8 @@
           <el-input v-model="form.name" />
         </el-form-item>
         <el-form-item label="分类" prop="category">
-          <el-select v-model="form.category" style="width: 100%">
-            <el-option label="前端" value="FRONTEND" />
-            <el-option label="后端" value="BACKEND" />
-            <el-option label="数据库" value="DATABASE" />
-            <el-option label="算法" value="ALGORITHM" />
-            <el-option label="移动端" value="MOBILE" />
+          <el-select v-model="form.category" style="width: 100%" filterable allow-create default-first-option>
+            <el-option v-for="cat in categories" :key="cat" :label="getCategoryLabel(cat)" :value="cat" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述" prop="description">
@@ -74,6 +67,22 @@
         </el-form-item>
         <el-form-item label="图标" prop="icon">
           <el-input v-model="form.icon" />
+        </el-form-item>
+        <el-form-item v-if="!editingSkill || editingSkill.isTree" label="难度等级" prop="difficultyLevel">
+          <el-select v-model="form.difficultyLevel" style="width: 100%">
+            <el-option label="入门" :value="1" />
+            <el-option label="初级" :value="2" />
+            <el-option label="中级" :value="3" />
+            <el-option label="高级" :value="4" />
+            <el-option label="专家" :value="5" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="form.parentId > 0" label="节点类型" prop="nodeType">
+          <el-select v-model="form.nodeType" style="width: 100%">
+            <el-option label="技能" value="SKILL" />
+            <el-option label="知识点" value="KNOWLEDGE" />
+            <el-option label="任务" value="TASK" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -87,7 +96,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getSkillTreeList, getSkillNodeTree, createSkillTree, updateSkillTree, deleteSkillTree, createSkillNode, updateSkillNode, deleteSkillNode } from '@/api/skill'
+import { getSkillTreeList, getSkillNodeTree, getSkillCategories, createSkillTree, updateSkillTree, deleteSkillTree, createSkillNode, updateSkillNode, deleteSkillNode } from '@/api/skill'
 
 const treeData = ref([])
 const loading = ref(false)
@@ -96,6 +105,7 @@ const dialogVisible = ref(false)
 const submitting = ref(false)
 const editingSkill = ref(null)
 const formRef = ref(null)
+const categories = ref([])
 
 const categoryLabelMap = {
   FRONTEND: '前端',
@@ -115,7 +125,9 @@ const form = reactive({
   description: '',
   parentId: 0,
   icon: '',
-  difficultyLevel: 1
+  difficultyLevel: 1,
+  nodeType: 'SKILL',
+  treeId: 0
 })
 
 const rules = {
@@ -136,6 +148,15 @@ const buildNodeTree = (nodes, parentId = 0) => {
     tree.push(node)
   })
   return tree
+}
+
+async function fetchCategories() {
+  try {
+    categories.value = await getSkillCategories()
+  } catch (error) {
+    console.error('获取分类失败:', error)
+    categories.value = []
+  }
 }
 
 async function fetchTree() {
@@ -184,7 +205,10 @@ function openDialog(skill, parentSkill) {
       category: skill.category || 'FRONTEND',
       description: skill.description || '',
       parentId: skill.parentId || 0,
-      icon: skill.icon || ''
+      icon: skill.icon || '',
+      difficultyLevel: skill.difficultyLevel || 1,
+      nodeType: skill.nodeType || 'SKILL',
+      treeId: skill.treeId || 0
     })
   } else {
     Object.assign(form, {
@@ -192,7 +216,10 @@ function openDialog(skill, parentSkill) {
       category: parentSkill ? parentSkill.category : 'FRONTEND',
       description: '',
       parentId: parentSkill ? parentSkill.id : 0,
-      icon: ''
+      icon: '',
+      difficultyLevel: 1,
+      nodeType: 'SKILL',
+      treeId: 0
     })
   }
   dialogVisible.value = true
@@ -243,7 +270,7 @@ async function handleSubmit() {
           name: form.name,
           description: form.description,
           icon: form.icon,
-          nodeType: 'SKILL'
+          nodeType: form.nodeType
         })
       }
       ElMessage.success('创建成功')
@@ -283,7 +310,10 @@ async function handleDelete(skill) {
   }
 }
 
-onMounted(fetchTree)
+onMounted(async () => {
+  await fetchCategories()
+  await fetchTree()
+})
 </script>
 
 <style scoped>

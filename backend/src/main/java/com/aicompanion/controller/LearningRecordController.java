@@ -2,6 +2,7 @@ package com.aicompanion.controller;
 
 import com.aicompanion.common.response.Result;
 import com.aicompanion.model.entity.LearningRecord;
+import com.aicompanion.model.vo.PageResult;
 import com.aicompanion.service.LearningRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,11 +17,13 @@ public class LearningRecordController {
     private final LearningRecordService learningRecordService;
 
     @GetMapping
-    public Result<List<LearningRecord>> searchRecords(
+    public Result<PageResult<LearningRecord>> searchRecords(
             @RequestParam(required = false) String userName,
-            @RequestParam(required = false) String courseType) {
-        List<LearningRecord> list = learningRecordService.searchRecords(userName, courseType);
-        return Result.success(list);
+            @RequestParam(required = false) String courseType,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        PageResult<LearningRecord> pageResult = learningRecordService.searchRecordsPage(userName, courseType, page, size);
+        return Result.success(pageResult);
     }
 
     @GetMapping("/{id}")

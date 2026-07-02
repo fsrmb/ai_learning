@@ -3,6 +3,7 @@ package com.aicompanion.service.impl;
 import com.aicompanion.common.exception.BusinessException;
 import com.aicompanion.mapper.LearningRecordMapper;
 import com.aicompanion.model.entity.LearningRecord;
+import com.aicompanion.model.vo.PageResult;
 import com.aicompanion.service.LearningRecordService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,14 @@ public class LearningRecordServiceImpl implements LearningRecordService {
     @Override
     public List<LearningRecord> searchRecords(String userName, String courseType) {
         return learningRecordMapper.searchRecords(userName, courseType);
+    }
+
+    @Override
+    public PageResult<LearningRecord> searchRecordsPage(String userName, String courseType, Integer page, Integer size) {
+        Long total = learningRecordMapper.searchRecordsCount(userName, courseType);
+        int offset = (page - 1) * size;
+        List<LearningRecord> records = learningRecordMapper.searchRecordsPage(userName, courseType, offset, size);
+        return PageResult.of(records, total, page, size);
     }
 
     @Override

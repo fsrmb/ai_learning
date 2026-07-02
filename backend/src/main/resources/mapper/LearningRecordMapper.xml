@@ -15,4 +15,28 @@
         ORDER BY id ASC
     </select>
 
+    <select id="searchRecordsCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM learning_record
+        WHERE deleted = 0
+        <if test="userName != null and userName != ''">
+            AND user_name LIKE CONCAT('%', #{userName}, '%')
+        </if>
+        <if test="courseType != null and courseType != ''">
+            AND course_type = #{courseType}
+        </if>
+    </select>
+
+    <select id="searchRecordsPage" resultType="com.aicompanion.model.entity.LearningRecord">
+        SELECT * FROM learning_record
+        WHERE deleted = 0
+        <if test="userName != null and userName != ''">
+            AND user_name LIKE CONCAT('%', #{userName}, '%')
+        </if>
+        <if test="courseType != null and courseType != ''">
+            AND course_type = #{courseType}
+        </if>
+        ORDER BY id ASC
+        LIMIT #{offset}, #{size}
+    </select>
+
 </mapper>

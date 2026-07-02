@@ -30,6 +30,10 @@
           <el-icon><component :is="Folder" /></el-icon>
           <span>技能树管理</span>
         </el-menu-item>
+        <el-menu-item index="skillassessment" @click="handleMenuClick('/skill-assessment')">
+          <el-icon><component :is="Star" /></el-icon>
+          <span>技能评估</span>
+        </el-menu-item>
         <el-menu-item index="aimanagement" @click="handleMenuClick('/ai-management')">
           <el-icon><component :is="Cpu" /></el-icon>
           <span>AI管理</span>
@@ -62,7 +66,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { House, User, ArrowLeft, ArrowRight, Document, Folder, Cpu } from '@element-plus/icons-vue'
+import { House, User, ArrowLeft, ArrowRight, Document, Folder, Cpu, Star } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
 
 const router = useRouter()
@@ -80,6 +84,7 @@ const menuMap = {
   users: '用户管理',
   learning: '学习记录',
   skilltree: '技能树管理',
+  skillassessment: '技能评估',
   aimanagement: 'AI管理'
 }
 

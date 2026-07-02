@@ -77,6 +77,16 @@ public class SkillTreeController {
         List<SkillTreeVO> list = skillTreeService.listSkillTrees(category);
         return Result.success(list);
     }
+
+    /**
+     * 获取技能树分类列表
+     */
+    @Operation(summary = "获取技能树分类列表", description = "获取所有技能树的分类，用于前端下拉框")
+    @GetMapping("/categories")
+    public Result<List<String>> getSkillCategories() {
+        List<String> categories = skillTreeService.getSkillCategories();
+        return Result.success(categories);
+    }
     
     /**
      * 创建技能节点

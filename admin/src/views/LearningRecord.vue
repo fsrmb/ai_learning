@@ -58,15 +58,17 @@
         <el-table-column prop="learnDate" label="学习日期" width="150" />
       </el-table>
 
-      <el-pagination
-        :current-page="pagination.page"
-        :page-size="pagination.size"
-        :total="pagination.total"
-        layout="total, prev, pager, next, jumper"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-        style="margin-top: 20px; text-align: right;"
-      />
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :total="pagination.total"
+          :page-sizes="[5, 10, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -112,7 +114,10 @@ const getScoreType = (score) => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    const params = {}
+    const params = {
+      page: pagination.page,
+      size: pagination.size
+    }
     if (searchForm.username) {
       params.userName = searchForm.username
     }
@@ -120,18 +125,16 @@ const loadRecords = async () => {
       params.courseType = searchForm.courseType
     }
 
-    const data = await getLearningRecordList(params)
+    const result = await getLearningRecordList(params)
     
-    const formattedData = data.map(record => ({
+    const formattedData = (result.records || []).map(record => ({
       ...record,
       username: record.userName,
       learnDate: record.learnDate
     }))
     
-    pagination.total = formattedData.length
-    const start = (pagination.page - 1) * pagination.size
-    const end = start + pagination.size
-    recordList.value = formattedData.slice(start, end)
+    recordList.value = formattedData
+    pagination.total = result.total || 0
   } catch (error) {
     console.error('获取学习记录失败:', error)
     recordList.value = []
@@ -154,13 +157,13 @@ const handleReset = () => {
   loadRecords()
 }
 
-const handlePageChange = (page) => {
-  pagination.page = page
+const handleCurrentChange = (val) => {
+  pagination.page = val
   loadRecords()
 }
 
-const handleSizeChange = (size) => {
-  pagination.size = size
+const handleSizeChange = (val) => {
+  pagination.size = val
   pagination.page = 1
   loadRecords()
 }
@@ -187,5 +190,13 @@ onMounted(() => {
   margin-bottom: 20px;
   padding-bottom: 20px;
   border-bottom: 1px solid #eee;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
 }
 </style>

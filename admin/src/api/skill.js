@@ -4,6 +4,10 @@ export function getSkillTreeList(params) {
   return request.get('/skill-trees', { params })
 }
 
+export function getSkillCategories() {
+  return request.get('/skill-trees/categories')
+}
+
 export function getSkillTreeDetail(id) {
   return request.get(`/skill-trees/${id}`)
 }
